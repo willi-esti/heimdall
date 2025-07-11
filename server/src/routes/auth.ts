@@ -50,7 +50,7 @@ router.post('/register', async (req: Request, res: Response) => {
     // Generate token
     const token = AuthService.generateToken(user.id, user.email);
 
-    res.status(201).json({
+    return res.status(201).json({
       message: 'User created successfully',
       user,
       token
@@ -60,7 +60,7 @@ router.post('/register', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Validation failed', details: error.errors });
     }
     console.error('Register error:', error);
-    res.status(500).json({ error: 'Failed to create user' });
+    return res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
@@ -87,7 +87,7 @@ router.post('/login', async (req: Request, res: Response) => {
     // Generate token
     const token = AuthService.generateToken(user.id, user.email);
 
-    res.json({
+    return res.json({
       message: 'Login successful',
       user: {
         id: user.id,
@@ -102,7 +102,7 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Validation failed', details: error.errors });
     }
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+    return res.status(500).json({ error: 'Login failed' });
   }
 });
 

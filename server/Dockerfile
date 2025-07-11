@@ -1,5 +1,8 @@
 FROM node:18-alpine
 
+# Install OpenSSL to fix Prisma SSL issues
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # Copy package files

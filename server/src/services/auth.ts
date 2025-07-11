@@ -21,7 +21,7 @@ export class AuthService {
     return jwt.sign(
       { userId, email },
       secret,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      { expiresIn: '7d' }
     );
   }
 
