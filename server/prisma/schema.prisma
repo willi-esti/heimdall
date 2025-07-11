@@ -1,0 +1,173 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  memberships    Membership[]
+  createdOrgs    Organization[]
+  auditLogs      AuditLog[]
+  secretVersions SecretVersion[]
+
+  @@map("users")
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Owner relationship
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Relationships
+  memberships Membership[]
+  folders     Folder[]
+  auditLogs   AuditLog[]
+
+  @@map("organizations")
+}
+
+enum MembershipRole {
+  VIEW
+  WRITE
+  ADMIN
+}
+
+model Membership {
+  id        String         @id @default(cuid())
+  role      MembershipRole @default(VIEW)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  // Foreign keys
+  userId         String
+  organizationId String
+
+  // Relationships
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("memberships")
+}
+
+model Folder {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Organization relationship
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Self-referencing for nested folders
+  parentId String?
+  parent   Folder? @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children Folder[] @relation("FolderHierarchy")
+
+  // Permission overrides (optional)
+  viewOverride  MembershipRole?
+  writeOverride MembershipRole?
+  adminOverride MembershipRole?
+
+  // Relationships
+  secrets   Secret[]
+  auditLogs AuditLog[]
+
+  @@map("folders")
+}
+
+model Secret {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  
+  // Encrypted content
+  encryptedValue String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Folder relationship
+  folderId String
+  folder   Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  // Relationships
+  versions  SecretVersion[]
+  auditLogs AuditLog[]
+
+  @@map("secrets")
+}
+
+model SecretVersion {
+  id        String   @id @default(cuid())
+  version   Int
+  
+  // Encrypted content for this version
+  encryptedValue String
+  
+  createdAt DateTime @default(now())
+
+  // Foreign keys
+  secretId String
+  userId   String
+
+  // Relationships
+  secret Secret @relation(fields: [secretId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([secretId, version])
+  @@map("secret_versions")
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  INVITE
+  REMOVE_USER
+  CHANGE_ROLE
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  action    AuditAction
+  details   String?
+  createdAt DateTime    @default(now())
+
+  // Foreign keys
+  userId         String
+  organizationId String
+  folderId       String?
+  secretId       String?
+
+  // Relationships
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  folder       Folder?       @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  secret       Secret?       @relation(fields: [secretId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}

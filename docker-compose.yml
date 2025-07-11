@@ -1,0 +1,55 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: heimdall
+      POSTGRES_USER: heimdall_user
+      POSTGRES_PASSWORD: heimdall_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U heimdall_user -d heimdall"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend Server
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://heimdall_user:heimdall_password@postgres:5432/heimdall?schema=public
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production-make-it-long-and-random
+      JWT_EXPIRES_IN: 7d
+      ENCRYPTION_KEY: abcdefghijklmnopqrstuvwxyz123456
+      FRONTEND_URL: http://localhost:3000
+      PORT: 3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    command: sh -c "npx prisma generate && npx prisma db push && npm run dev"
+
+  # Frontend Client
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:3001
+    depends_on:
+      - server
+
+volumes:
+  postgres_data:
