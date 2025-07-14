@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { prisma } from './lib/prisma';
 import { log } from './lib/logger';
+import { setupSwagger } from './lib/swagger';
 import authRoutes from './routes/auth';
 
 // Load environment variables from root .env file
@@ -24,12 +25,25 @@ app.use((req, res, next) => {
 // Middleware
 app.use(express.json());
 
+// Security: Block documentation routes in production
+if (process.env.NODE_ENV === 'production') {
+  app.use('/api-docs*', (req, res) => {
+    log.security('Attempted access to documentation in production', { ip: req.ip, userAgent: req.get('User-Agent') });
+    res.status(404).json({ error: 'Not found' });
+  });
+}
+
+// Setup Swagger documentation
+setupSwagger(app);
+
 // Routes
 app.use('/api/auth', authRoutes);
 
 app.get('/', (req, res) => {
   log.api('Root endpoint accessed');
-  res.json({ 
+  
+  // Base response
+  const response: any = {
     message: 'Heimdall Server is running!', 
     version: '1.0.0',
     timestamp: new Date().toISOString(),
@@ -41,7 +55,17 @@ app.get('/', (req, res) => {
         refresh: 'POST /api/auth/refresh (protected)'
       }
     }
-  });
+  };
+
+  // Only include documentation links in development
+  if (process.env.NODE_ENV !== 'production') {
+    response.documentation = {
+      swagger: '/api-docs',
+      spec: '/api-docs.json'
+    };
+  }
+
+  res.json(response);
 });
 
 // Health check endpoint that tests database connection

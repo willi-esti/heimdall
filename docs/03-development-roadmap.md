@@ -1,13 +1,16 @@
-# Development Roadmap & Task Tr#7. ✅ Implement JWT authentication with proper MVC structure
+# Development Roadmap### ✅ **Completed Tasks**
+1. ✅ Create `.env` file for environment variables
+2. ✅ Initialize Node.js project with `npm init`
+3. ✅ Install Express and TypeScript
+4. ✅ Configure TypeScript (`tsconfig.json`)
+5. ✅ Install PostgreSQL and Prisma
+6. ✅ Set up Prisma schema and generate client
+7. ✅ Implement JWT authentication with proper MVC structure
 8. ✅ Set up custom logger with colorized output and log levels
 9. ✅ Implement log rotation to prevent log files from growing indefinitely
+10. ✅ Install and set up Swagger using `swagger-jsdoc` and `swagger-ui-express`
 
 ### 📋 **Remaining Tasks**
-10. ⏳ Install and set up Swagger using `swagger-jsdoc` and `swagger-ui-express`
-11. ⏳ Create `Dockerfile` for the backend
-12. ⏳ Create `docker-compose.yml` for backend and database*Remaining Tasks**
-9. ⏳ Install and set up Swagger using `swagger-jsdoc` and `swagger-ui-express`
-10. ⏳ Implement log rotation to prevent log files from growing indefinitely
 11. ⏳ Create `Dockerfile` for the backend
 12. ⏳ Create `docker-compose.yml` for backend and databaseng
 
@@ -16,11 +19,11 @@ This document tracks all development phases, tasks, and their completion status 
 ---
 
 ## 📋 **Development Rules**
-
-1. **Environment Configuration**: Use the unique `.env` file at the root of the project and don't forget to add to the .env.example file for reference
-2. **Testing Strategy**: Create a test for each API endpoint in `server/test/{endpoint}-test.ts` format
-3. **Code Organization**: Follow MVC pattern (Routes → Controllers → Services)
-4. **Documentation**: Maintain comprehensive docs for project memory
+1. **Environment Configuration**: Use the unique `.env` file at the root of the project and don't forget to add to the .env.example file for reference  
+2. **Testing Strategy**: Create a test for each API endpoint in `server/test/{endpoint}-test.ts` format  
+3. **Code Organization**: Follow MVC pattern (Routes → Controllers → Services)  
+4. **Documentation**: Maintain comprehensive docs for project memory  
+5. **Swagger Updates**: Always add or update Swagger documentation for every new or modified API endpoint to keep API docs current  
 
 ---
 
@@ -140,9 +143,9 @@ This document tracks all development phases, tasks, and their completion status 
 - **Phase 2**: Database Models (100% - All models defined)
 
 ### 🔄 **Current Phase**
-- **Phase 1**: Infrastructure Setup (75% complete)
-  - ✅ 9/12 tasks completed
-  - ⏳ 3 tasks remaining
+- **Phase 1**: Infrastructure Setup (83% complete)
+  - ✅ 10/12 tasks completed
+  - ⏳ 2 tasks remaining
 
 ### 📈 **Key Achievements**
 - ✅ Solid project foundation with TypeScript + Express
