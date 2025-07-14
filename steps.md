@@ -1,7 +1,10 @@
 # Project Setup Steps
 
-## Phase 1 — Setup
+## Rules
+Use the unique .env that is at the root of the project.
+Make a test for each api endpoint in the `server/test/{endpoint}-test.ts` file.
 
+## Phase 1 — Setup
 1. Create a `.env` file for environment variables.
 2. Initialize a new Node.js project with `npm init`.
 3. Install Express and TypeScript.
@@ -9,8 +12,10 @@
 5. Install PostgreSQL and Prisma.
 6. Set up Prisma schema and generate client.
 7. Implement JWT authentication.
-8. Create a `Dockerfile` for the backend.
-9. Create a `docker-compose.yml` for backend and database.
+8. Install and set up Swagger using `swagger-jsdoc` and `swagger-ui-express`.
+9. Set up a custom logger with colorized output and log levels (e.g., info, warn, error) to replace `console.log`.
+10. Create a `Dockerfile` for the backend.
+11. Create a `docker-compose.yml` for backend and database.
 
 ## Phase 2 — Base Models
 

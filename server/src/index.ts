@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { prisma } from './lib/prisma';
+import authRoutes from './routes/auth';
 
 // Load environment variables from root .env file
 // In Docker: .env is mounted directly, in dev: look in parent directory
@@ -16,11 +17,22 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 
+// Routes
+app.use('/api/auth', authRoutes);
+
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Heimdall Server is running!', 
     version: '1.0.0',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      auth: {
+        register: 'POST /api/auth/register',
+        login: 'POST /api/auth/login',
+        me: 'GET /api/auth/me (protected)',
+        refresh: 'POST /api/auth/refresh (protected)'
+      }
+    }
   });
 });
 
