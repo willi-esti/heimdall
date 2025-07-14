@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import { prisma } from '../lib/prisma';
 import { generateToken } from '../lib/auth';
+import { log } from '../lib/logger';
 
 export interface RegisterData {
   email: string;
@@ -27,6 +28,8 @@ export class AuthService {
   async register(data: RegisterData): Promise<AuthResult> {
     const { email, username, password, firstName, lastName } = data;
 
+    log.db('Checking for existing user', { email, username });
+
     // Check if user already exists
     const existingUser = await prisma.user.findFirst({
       where: {
@@ -38,16 +41,26 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new Error(
-        existingUser.email === email 
-          ? 'Email already exists' 
-          : 'Username already taken'
-      );
+      const errorMessage = existingUser.email === email 
+        ? 'Email already exists' 
+        : 'Username already taken';
+      
+      log.warn('User registration blocked: duplicate found', { 
+        email, 
+        username, 
+        conflict: errorMessage 
+      });
+      
+      throw new Error(errorMessage);
     }
+
+    log.debug('Hashing password for new user');
 
     // Hash password
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    log.db('Creating new user in database', { email, username });
 
     // Create user
     const user = await prisma.user.create({
@@ -68,6 +81,8 @@ export class AuthService {
       }
     });
 
+    log.auth('User created successfully', { userId: user.id, email });
+
     // Generate JWT token
     const token = generateToken(user.id, user.email);
 
@@ -76,6 +91,8 @@ export class AuthService {
 
   // Login user
   async login(emailOrUsername: string, password: string): Promise<AuthResult> {
+    log.db('Looking up user for login', { emailOrUsername });
+
     // Find user by email or username
     const user = await prisma.user.findFirst({
       where: {
@@ -87,15 +104,24 @@ export class AuthService {
     });
 
     if (!user) {
+      log.security('Login attempt with non-existent user', { emailOrUsername });
       throw new Error('Invalid credentials');
     }
+
+    log.debug('User found, verifying password', { userId: user.id });
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
+      log.security('Login attempt with invalid password', { 
+        userId: user.id, 
+        email: user.email 
+      });
       throw new Error('Invalid credentials');
     }
+
+    log.auth('Password verified, generating token', { userId: user.id });
 
     // Generate JWT token
     const token = generateToken(user.id, user.email);
@@ -108,6 +134,8 @@ export class AuthService {
 
   // Get current user by ID
   async getCurrentUser(userId: string) {
+    log.db('Getting current user info', { userId });
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -133,14 +161,18 @@ export class AuthService {
     });
 
     if (!user) {
+      log.warn('User not found during getCurrentUser', { userId });
       throw new Error('User not found');
     }
 
+    log.debug('User info retrieved', { userId, membershipCount: user.memberships.length });
     return user;
   }
 
   // Refresh token for user
   async refreshToken(userId: string): Promise<string> {
+    log.db('Verifying user exists for token refresh', { userId });
+
     // Verify user still exists
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -148,8 +180,11 @@ export class AuthService {
     });
 
     if (!user) {
+      log.warn('Token refresh failed: user not found', { userId });
       throw new Error('User not found');
     }
+
+    log.auth('Generating new token for user', { userId });
 
     // Generate new token
     return generateToken(user.id, user.email);

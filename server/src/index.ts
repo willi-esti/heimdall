@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { prisma } from './lib/prisma';
+import { log } from './lib/logger';
 import authRoutes from './routes/auth';
 
 // Load environment variables from root .env file
@@ -14,6 +15,12 @@ dotenv.config({ path: envPath });
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Request logging middleware
+app.use((req, res, next) => {
+  log.request(req, res);
+  next();
+});
+
 // Middleware
 app.use(express.json());
 
@@ -21,6 +28,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 
 app.get('/', (req, res) => {
+  log.api('Root endpoint accessed');
   res.json({ 
     message: 'Heimdall Server is running!', 
     version: '1.0.0',
@@ -39,12 +47,14 @@ app.get('/', (req, res) => {
 // Health check endpoint that tests database connection
 app.get('/health', async (req, res) => {
   try {
+    log.db('Testing database connection for health check');
+    
     // Test database connection
     await prisma.$connect();
     const userCount = await prisma.user.count();
     const orgCount = await prisma.organization.count();
     
-    res.json({
+    const healthData = {
       status: 'healthy',
       database: 'connected',
       stats: {
@@ -52,9 +62,12 @@ app.get('/health', async (req, res) => {
         organizations: orgCount
       },
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    log.info('Health check passed', healthData);
+    res.json(healthData);
   } catch (error) {
-    console.error('Health check failed:', error);
+    log.errorWithContext(error instanceof Error ? error : new Error(String(error)), 'Health Check');
     res.status(500).json({
       status: 'unhealthy',
       database: 'disconnected',
@@ -66,12 +79,17 @@ app.get('/health', async (req, res) => {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('Shutting down gracefully...');
+  log.startup('Shutting down gracefully...');
   await prisma.$disconnect();
   process.exit(0);
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Heimdall Server is running on http://localhost:${PORT}`);
-  console.log(`📊 Health check available at http://localhost:${PORT}/health`);
+  log.startup(`Heimdall Server is running on http://localhost:${PORT}`);
+  log.startup(`Health check available at http://localhost:${PORT}/health`);
+  log.info('Server initialization complete', {
+    port: PORT,
+    nodeEnv: process.env.NODE_ENV,
+    logLevel: process.env.LOG_LEVEL,
+  });
 });

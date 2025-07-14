@@ -1,4 +1,5 @@
 .env
 node_modules/
 dist/
-/server/src/generated/prisma
+server/src/generated/prisma
+logs/

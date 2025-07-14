@@ -6,7 +6,7 @@ This document tracks all development phases, tasks, and their completion status 
 
 ## 📋 **Development Rules**
 
-1. **Environment Configuration**: Use the unique `.env` file at the root of the project
+1. **Environment Configuration**: Use the unique `.env` file at the root of the project and don't forget to add to the .env.example file for reference
 2. **Testing Strategy**: Create a test for each API endpoint in `server/test/{endpoint}-test.ts` format
 3. **Code Organization**: Follow MVC pattern (Routes → Controllers → Services)
 4. **Documentation**: Maintain comprehensive docs for project memory
@@ -27,12 +27,10 @@ This document tracks all development phases, tasks, and their completion status 
 5. ✅ Install PostgreSQL and Prisma
 6. ✅ Set up Prisma schema and generate client
 7. ✅ Implement JWT authentication with proper MVC structure
+8. ✅ Set up custom logger with colorized output and log levels
 
-### 🔄 **In Progress**
-8. 🔄 Install and set up Swagger using `swagger-jsdoc` and `swagger-ui-express`
-9. 🔄 Set up custom logger with colorized output and log levels
-
-### 📋 **Remaining Tasks**
+### � **Remaining Tasks**
+9. ⏳ Install and set up Swagger using `swagger-jsdoc` and `swagger-ui-express`
 10. ⏳ Create `Dockerfile` for the backend
 11. ⏳ Create `docker-compose.yml` for backend and database
 
@@ -43,13 +41,13 @@ This document tracks all development phases, tasks, and their completion status 
 **Objective**: Define all core data models and relationships
 
 ### 📋 **Tasks** (All models already defined in Prisma schema)
-10. ✅ Define `User` model in Prisma
-11. ✅ Define `Organization` model in Prisma
-12. ✅ Define `Membership` model in Prisma
-13. ✅ Define `Folder` model in Prisma
-14. ✅ Define `Secret` model in Prisma
-15. ✅ Define `SecretVersion` model in Prisma
-16. ✅ Define `AuditLog` model in Prisma
+1. ✅ Define `User` model in Prisma
+2. ✅ Define `Organization` model in Prisma
+3. ✅ Define `Membership` model in Prisma
+4. ✅ Define `Folder` model in Prisma
+5. ✅ Define `Secret` model in Prisma
+6. ✅ Define `SecretVersion` model in Prisma
+7. ✅ Define `AuditLog` model in Prisma
 
 **Note**: All models are already implemented in the current Prisma schema
 
@@ -60,10 +58,10 @@ This document tracks all development phases, tasks, and their completion status 
 **Objective**: Implement user and organization management
 
 ### 📋 **Planned Tasks**
-17. ⏳ Implement organization creation
-18. ⏳ Implement joining organization via invite
-19. ⏳ Implement manual user addition to organization
-20. ⏳ Implement membership management and rights assignment
+1. ⏳ Implement organization creation
+2. ⏳ Implement joining organization via invite
+3. ⏳ Implement manual user addition to organization
+4. ⏳ Implement membership management and rights assignment
 
 ---
 
@@ -72,9 +70,9 @@ This document tracks all development phases, tasks, and their completion status 
 **Objective**: Build folder management and permission system
 
 ### 📋 **Planned Tasks**
-21. ⏳ Implement CRUD operations for nested folders
-22. ⏳ Implement permission inheritance logic (org → folders → secrets)
-23. ⏳ Implement support for overriding permissions on folders
+1. ⏳ Implement CRUD operations for nested folders
+2. ⏳ Implement permission inheritance logic (org → folders → secrets)
+3. ⏳ Implement support for overriding permissions on folders
 
 ---
 
@@ -83,9 +81,9 @@ This document tracks all development phases, tasks, and their completion status 
 **Objective**: Core secret management functionality
 
 ### 📋 **Planned Tasks**
-24. ⏳ Implement CRUD operations for secrets
-25. ⏳ Implement AES-256-GCM encryption before insert
-26. ⏳ Implement decryption on read
+1. ⏳ Implement CRUD operations for secrets
+2. ⏳ Implement AES-256-GCM encryption before insert
+3. ⏳ Implement decryption on read
 
 ---
 
@@ -94,8 +92,8 @@ This document tracks all development phases, tasks, and their completion status 
 **Objective**: Add history tracking and audit capabilities
 
 ### 📋 **Planned Tasks**
-27. ⏳ Implement `SecretVersion` model to keep history
-28. ⏳ Implement `AuditLog` model for access/change events
+1. ⏳ Implement `SecretVersion` model to keep history
+2. ⏳ Implement `AuditLog` model for access/change events
 
 ---
 
@@ -104,11 +102,11 @@ This document tracks all development phases, tasks, and their completion status 
 **Objective**: Build the React user interface
 
 ### 📋 **Planned Tasks**
-29. ⏳ Set up React app
-30. ⏳ Implement authentication flows
-31. ⏳ Create folder tree UI
-32. ⏳ Implement secret view/edit/history
-33. ⏳ Create admin panel to view logs
+1. ⏳ Set up React app
+2. ⏳ Implement authentication flows
+3. ⏳ Create folder tree UI
+4. ⏳ Implement secret view/edit/history
+5. ⏳ Create admin panel to view logs
 
 ---
 
@@ -117,9 +115,9 @@ This document tracks all development phases, tasks, and their completion status 
 **Objective**: Complete containerization and deployment setup
 
 ### 📋 **Planned Tasks**
-34. ⏳ Create `Dockerfile` for the frontend
-35. ⏳ Update `docker-compose.yml` to include frontend
-36. ⏳ Finalize Docker Compose setup for backend, frontend, and database
+1. ⏳ Create `Dockerfile` for the frontend
+2. ⏳ Update `docker-compose.yml` to include frontend
+3. ⏳ Finalize Docker Compose setup for backend, frontend, and database
 
 ---
 
@@ -131,10 +129,9 @@ This document tracks all development phases, tasks, and their completion status 
 - **Phase 2**: Database Models (100% - All models defined)
 
 ### 🔄 **Current Phase**
-- **Phase 1**: Infrastructure Setup (70% complete)
-  - ✅ 7/11 tasks completed
-  - 🔄 2 tasks in progress
-  - ⏳ 2 tasks remaining
+- **Phase 1**: Infrastructure Setup (73% complete)
+  - ✅ 8/11 tasks completed
+  - ⏳ 3 tasks remaining
 
 ### 📈 **Key Achievements**
 - ✅ Solid project foundation with TypeScript + Express
@@ -144,7 +141,7 @@ This document tracks all development phases, tasks, and their completion status 
 - ✅ Clean code organization following best practices
 
 ### 🎯 **Next Milestones**
-1. **Complete Phase 1** - Finish Swagger docs and logging
+1. **Complete Phase 1** - Finish Swagger docs and Docker setup
 2. **Begin Phase 3** - Start organization management features
 3. **Phase 4-5** - Core folder and secret functionality
 4. **Phase 6-7** - Audit system and frontend development
