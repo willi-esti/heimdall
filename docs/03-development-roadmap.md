@@ -1,4 +1,15 @@
-# Development Roadmap & Task Tracking
+# Development Roadmap & Task Tr#7. ✅ Implement JWT authentication with proper MVC structure
+8. ✅ Set up custom logger with colorized output and log levels
+9. ✅ Implement log rotation to prevent log files from growing indefinitely
+
+### 📋 **Remaining Tasks**
+10. ⏳ Install and set up Swagger using `swagger-jsdoc` and `swagger-ui-express`
+11. ⏳ Create `Dockerfile` for the backend
+12. ⏳ Create `docker-compose.yml` for backend and database*Remaining Tasks**
+9. ⏳ Install and set up Swagger using `swagger-jsdoc` and `swagger-ui-express`
+10. ⏳ Implement log rotation to prevent log files from growing indefinitely
+11. ⏳ Create `Dockerfile` for the backend
+12. ⏳ Create `docker-compose.yml` for backend and databaseng
 
 This document tracks all development phases, tasks, and their completion status for the Heimdall project.
 
@@ -129,8 +140,8 @@ This document tracks all development phases, tasks, and their completion status 
 - **Phase 2**: Database Models (100% - All models defined)
 
 ### 🔄 **Current Phase**
-- **Phase 1**: Infrastructure Setup (73% complete)
-  - ✅ 8/11 tasks completed
+- **Phase 1**: Infrastructure Setup (75% complete)
+  - ✅ 9/12 tasks completed
   - ⏳ 3 tasks remaining
 
 ### 📈 **Key Achievements**

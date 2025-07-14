@@ -1,4 +1,5 @@
 import winston from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 
 // Define chalk colors as functions since we'll handle coloring differently
 const colors = {
@@ -94,18 +95,46 @@ const logger = winston.createLogger({
       format: consoleFormat,
     }),
     
-    // File transports
-    new winston.transports.File({
-      filename: 'logs/error.log',
+    // Rotating file transport for error logs
+    new DailyRotateFile({
+      filename: 'logs/error-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
       level: 'error',
       format: fileFormat,
+      maxSize: process.env.LOG_MAX_SIZE || '20m', // Rotate when file reaches specified size
+      maxFiles: process.env.LOG_ERROR_MAX_FILES || '14d', // Keep error logs for specified days
+      auditFile: 'logs/error-audit.json',
+      zippedArchive: process.env.LOG_COMPRESSION === 'true', // Use environment variable for compression
     }),
     
-    new winston.transports.File({
-      filename: 'logs/combined.log',
+    // Rotating file transport for all logs
+    new DailyRotateFile({
+      filename: 'logs/combined-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
       format: fileFormat,
+      maxSize: process.env.LOG_MAX_SIZE || '20m', // Rotate when file reaches specified size
+      maxFiles: process.env.LOG_MAX_FILES || '30d', // Keep logs for specified days
+      auditFile: 'logs/combined-audit.json',
+      zippedArchive: process.env.LOG_COMPRESSION === 'true', // Use environment variable for compression
     }),
   ],
+});
+
+// Listen for log rotation events
+logger.transports.forEach((transport) => {
+  if (transport instanceof DailyRotateFile) {
+    transport.on('rotate', (oldFilename, newFilename) => {
+      logger.info(`📦 Log rotated: ${oldFilename} → ${newFilename}`);
+    });
+    
+    transport.on('archive', (zipFilename) => {
+      logger.info(`🗜️  Log archived: ${zipFilename}`);
+    });
+    
+    transport.on('logRemoved', (removedFilename) => {
+      logger.info(`🗑️  Old log removed: ${removedFilename}`);
+    });
+  }
 });
 
 // Create logs directory if it doesn't exist
