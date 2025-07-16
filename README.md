@@ -82,6 +82,22 @@ For detailed setup instructions, see [**Getting Started Guide**](docs/05-getting
 
 ---
 
+## 🏭 **Production Deployment**
+
+For production deployment using Docker, see the comprehensive [**Production Deployment Guide**](README-PRODUCTION.md).
+
+Quick production setup:
+```bash
+# Setup production environment
+cp .env.example .env.prod
+# Edit .env.prod with production values
+
+# Deploy with Docker Compose
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+---
+
 ## 📁 **Project Structure**
 
 ```

@@ -12,7 +12,11 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed": "ts-node prisma/seed.ts"
+    "db:seed": "ts-node prisma/seed.ts",
+    "docker:build": "docker build -t heimdall-server .",
+    "docker:run": "docker run -p 3000:3000 --env-file ../.env heimdall-server",
+    "docker:build-prod": "docker build -t heimdall-server:latest -t heimdall-server:$(node -p \"require('./package.json').version\") .",
+    "docker:push": "docker push heimdall-server:latest && docker push heimdall-server:$(node -p \"require('./package.json').version\")"
   },
   "keywords": [],
   "author": "",

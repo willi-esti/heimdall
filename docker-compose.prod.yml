@@ -1,32 +1,87 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
   postgres:
-    image: postgres:latest
+    image: postgres:15-alpine
     container_name: heimdall_postgres_prod
+    restart: unless-stopped
     environment:
+      POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
+      - ./server/postgres/init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - heimdall_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  server:
+  # Heimdall Backend API
+  api:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: heimdall_server_prod
+    container_name: heimdall_api_prod
+    restart: unless-stopped
     environment:
-      - PORT=${PORT}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      HOST: 0.0.0.0
+      PORT: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_MAX_SIZE: ${LOG_MAX_SIZE:-20m}
+      LOG_MAX_FILES: ${LOG_MAX_FILES:-30d}
+      LOG_ERROR_MAX_FILES: ${LOG_ERROR_MAX_FILES:-14d}
+      LOG_COMPRESSION: ${LOG_COMPRESSION:-true}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
     ports:
       - "3000:3000"
+    networks:
+      - heimdall_network
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    volumes:
+      - api_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Database migration runner
+  migrate:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: heimdall_migrate_prod
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    networks:
+      - heimdall_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npx", "prisma", "migrate", "deploy"]
+    restart: "no"
 
 volumes:
   postgres_data_prod:
+    driver: local
+  api_logs:
+    driver: local
+
+networks:
+  heimdall_network:
+    driver: bridge
