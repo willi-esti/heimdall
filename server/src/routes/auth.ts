@@ -27,15 +27,18 @@ const authController = new AuthController();
  *             type: object
  *             required:
  *               - email
+ *               - username
  *               - password
- *               - firstName
- *               - lastName
  *             properties:
  *               email:
  *                 type: string
  *                 format: email
  *                 example: user@example.com
  *                 description: Valid email address
+ *               username:
+ *                 type: string
+ *                 example: johndoe
+ *                 description: Unique username for the account
  *               password:
  *                 type: string
  *                 minLength: 8
@@ -44,11 +47,11 @@ const authController = new AuthController();
  *               firstName:
  *                 type: string
  *                 example: John
- *                 description: User's first name
+ *                 description: User's first name (optional)
  *               lastName:
  *                 type: string
  *                 example: Doe
- *                 description: User's last name
+ *                 description: User's last name (optional)
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -69,19 +72,31 @@ const authController = new AuthController();
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Email, username, and password are required
  *       409:
  *         description: User already exists
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Email already exists
  *       500:
  *         description: Internal server error
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Service temporarily unavailable. Please try again later.
  */
 router.post('/register', authController.register);
 
@@ -99,18 +114,24 @@ router.post('/register', authController.register);
  *           schema:
  *             type: object
  *             required:
- *               - email
  *               - password
  *             properties:
  *               email:
  *                 type: string
  *                 format: email
  *                 example: user@example.com
- *                 description: Registered email address
+ *                 description: Email address (provide either email or username)
+ *               username:
+ *                 type: string
+ *                 example: johndoe
+ *                 description: Username (provide either email or username)
  *               password:
  *                 type: string
  *                 example: SecurePassword123!
  *                 description: User password
+ *             oneOf:
+ *               - required: [email]
+ *               - required: [username]
  *     responses:
  *       200:
  *         description: Login successful
@@ -131,19 +152,31 @@ router.post('/register', authController.register);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Email or username, and password are required
  *       401:
  *         description: Invalid credentials
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Invalid credentials
  *       500:
  *         description: Internal server error
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Service temporarily unavailable. Please try again later.
  */
 router.post('/login', authController.login);
 

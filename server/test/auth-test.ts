@@ -82,12 +82,12 @@ async function runTests() {
     console.log('Error:', duplicateResponse.body.error);
     console.log('');
 
-    // Test 3: Login with valid credentials
-    console.log('3. Testing login with valid credentials...');
+    // Test 3: Login with valid credentials (using email)
+    console.log('3. Testing login with valid credentials (using email)...');
     const loginResponse = await request(app)
       .post('/api/auth/login')
       .send({
-        emailOrUsername: testUser.email,
+        email: testUser.email,
         password: testUser.password
       })
       .expect(200);
@@ -104,18 +104,68 @@ async function runTests() {
     });
     console.log('');
 
+    // Test 3.5: Login with valid credentials (using username)
+    console.log('3.5. Testing login with valid credentials (using username)...');
+    const usernameLoginResponse = await request(app)
+      .post('/api/auth/login')
+      .send({
+        username: testUser.username,
+        password: testUser.password
+      })
+      .expect(200);
+
+    console.log('✅ Username login successful');
+    console.log('Response:', {
+      message: usernameLoginResponse.body.message,
+      user: {
+        id: usernameLoginResponse.body.user.id,
+        email: usernameLoginResponse.body.user.email,
+        username: usernameLoginResponse.body.user.username
+      },
+      tokenPresent: !!usernameLoginResponse.body.token
+    });
+    console.log('');
+
     // Test 4: Login with invalid credentials
     console.log('4. Testing login with invalid credentials (should fail)...');
     const invalidLoginResponse = await request(app)
       .post('/api/auth/login')
       .send({
-        emailOrUsername: testUser.email,
+        email: testUser.email,
         password: 'wrongpassword'
       })
       .expect(401);
 
     console.log('✅ Invalid login properly rejected');
     console.log('Error:', invalidLoginResponse.body.error);
+    console.log('');
+
+    // Test 4.5: Login with both email and username (should fail)
+    console.log('4.5. Testing login with both email and username provided (should fail)...');
+    const bothFieldsResponse = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: testUser.email,
+        username: testUser.username,
+        password: testUser.password
+      })
+      .expect(400);
+
+    console.log('✅ Login with both fields properly rejected');
+    console.log('Error:', bothFieldsResponse.body.error);
+    console.log('');
+
+    // Test 4.6: Login with neither email nor username (should fail)
+    console.log('4.6. Testing login with no identifier (should fail)...');
+    const noIdentifierResponse = await request(app)
+      .post('/api/auth/login')
+      .send({
+        password: testUser.password
+      })
+      .expect(400);
+
+    console.log('✅ Login with no identifier properly rejected');
+    console.log('Error:', noIdentifierResponse.body.error);
     console.log('');
 
     // Test 5: Get current user info (protected route)

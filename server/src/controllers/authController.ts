@@ -46,6 +46,7 @@ export class AuthController {
       });
     } catch (error) {
       if (error instanceof Error) {
+        // Handle known business logic errors
         if (error.message.includes('already exists') || error.message.includes('already taken')) {
           log.warn('Registration failed: duplicate user', { 
             error: error.message,
@@ -55,15 +56,36 @@ export class AuthController {
           res.status(409).json({ error: error.message });
           return;
         }
+        
+        // Handle service unavailable errors
+        if (error.message.includes('Service temporarily unavailable')) {
+          log.warn('Registration failed: service unavailable', { 
+            email: req.body.email,
+            username: req.body.username 
+          });
+          res.status(503).json({ error: error.message });
+          return;
+        }
+        
+        // Handle other expected service errors
+        if (error.message.includes('Registration failed. Please try again.')) {
+          log.warn('Registration failed: general error', { 
+            email: req.body.email,
+            username: req.body.username 
+          });
+          res.status(500).json({ error: error.message });
+          return;
+        }
       }
       
+      // Log any unexpected errors but don't expose them
       log.errorWithContext(
         error instanceof Error ? error : new Error(String(error)), 
-        'Registration',
+        'Unexpected Registration Error',
         { email: req.body.email, username: req.body.username }
       );
       res.status(500).json({ 
-        error: 'Internal server error during registration' 
+        error: 'Registration failed. Please try again.' 
       });
     }
   };
@@ -71,15 +93,31 @@ export class AuthController {
   // Login user
   login = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { emailOrUsername, password } = req.body;
+      const { email, username, password } = req.body;
 
-      log.auth('Login attempt', { emailOrUsername });
+      // Determine which identifier was provided
+      const emailOrUsername = email || username;
+      const identifierType = email ? 'email' : 'username';
+
+      log.auth('Login attempt', { 
+        identifierType, 
+        identifier: emailOrUsername 
+      });
 
       // Validate required fields
-      if (!emailOrUsername || !password) {
-        log.warn('Login failed: missing credentials', { emailOrUsername });
+      if ((!email && !username) || !password) {
+        log.warn('Login failed: missing credentials', { email, username });
         res.status(400).json({ 
-          error: 'Email/username and password are required' 
+          error: 'Email or username, and password are required' 
+        });
+        return;
+      }
+
+      // Validate that only one identifier is provided
+      if (email && username) {
+        log.warn('Login failed: both email and username provided', { email, username });
+        res.status(400).json({ 
+          error: 'Please provide either email or username, not both' 
         });
         return;
       }
@@ -99,20 +137,41 @@ export class AuthController {
     } catch (error) {
       if (error instanceof Error && error.message === 'Invalid credentials') {
         log.security('Failed login attempt', { 
-          emailOrUsername: req.body.emailOrUsername,
+          email: req.body.email,
+          username: req.body.username,
           ip: req.ip 
         });
         res.status(401).json({ error: 'Invalid credentials' });
         return;
       }
 
+      // Handle service unavailable errors
+      if (error instanceof Error && error.message.includes('Service temporarily unavailable')) {
+        log.warn('Login failed: service unavailable', { 
+          email: req.body.email,
+          username: req.body.username 
+        });
+        res.status(503).json({ error: error.message });
+        return;
+      }
+
+      // Handle other expected service errors
+      if (error instanceof Error && error.message.includes('Login failed. Please try again.')) {
+        log.warn('Login failed: general error', { 
+          email: req.body.email,
+          username: req.body.username 
+        });
+        res.status(500).json({ error: error.message });
+        return;
+      }
+
       log.errorWithContext(
         error instanceof Error ? error : new Error(String(error)), 
-        'Login',
-        { emailOrUsername: req.body.emailOrUsername }
+        'Unexpected Login Error',
+        { email: req.body.email, username: req.body.username }
       );
       res.status(500).json({ 
-        error: 'Internal server error during login' 
+        error: 'Login failed. Please try again.' 
       });
     }
   };
