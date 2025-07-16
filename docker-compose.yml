@@ -22,7 +22,8 @@ services:
       - ./.env:/app/.env:ro  # Mount root .env as read-only
     command: ["sh", "-c", "npm install && npm run dev"]
     ports:
-      - "127.0.0.1:3000:3000"
+      #- "127.0.0.1:3000:3000"
+      - "3000:3000"
     depends_on:
       - postgres
 

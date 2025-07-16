@@ -23,7 +23,7 @@ const swaggerDefinition = {
     {
       url: process.env.NODE_ENV === 'production' 
         ? 'https://api.heimdall.dev' 
-        : `http://localhost:${process.env.PORT || 3000}`,
+        : `http://${process.env.HOST || 'localhost'}:${process.env.PORT || 3000}`,
       description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server',
     },
   ],
