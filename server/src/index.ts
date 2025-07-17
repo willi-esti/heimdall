@@ -6,6 +6,7 @@ import { prisma } from './lib/prisma';
 import { log } from './lib/logger';
 import { setupSwagger } from './lib/swagger';
 import authRoutes from './routes/auth';
+import organizationRoutes from './routes/organizations';
 
 // Load environment variables from root .env file
 // In Docker: .env is mounted directly, in dev: look in parent directory
@@ -71,6 +72,7 @@ setupSwagger(app);
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/organizations', organizationRoutes);
 
 app.get('/', (req, res) => {
   log.api('Root endpoint accessed');
@@ -86,6 +88,14 @@ app.get('/', (req, res) => {
         login: 'POST /api/auth/login',
         me: 'GET /api/auth/me (protected)',
         refresh: 'POST /api/auth/refresh (protected)'
+      },
+      organizations: {
+        create: 'POST /api/organizations (protected)',
+        list: 'GET /api/organizations (protected)',
+        get: 'GET /api/organizations/:id (protected)',
+        addMember: 'POST /api/organizations/:id/members (protected)',
+        updateMember: 'PUT /api/organizations/:id/members/:userId (protected)',
+        removeMember: 'DELETE /api/organizations/:id/members/:userId (protected)'
       }
     }
   };

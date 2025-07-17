@@ -27,6 +27,17 @@ services:
     depends_on:
       - postgres
 
+  pgamdin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: 'admin@gmail.com'
+      PGADMIN_DEFAULT_PASSWORD: 'admin'
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
       
 
 volumes:
