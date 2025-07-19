@@ -33,12 +33,21 @@ model Organization {
   id          String   @id @default(cuid())
   name        String
   description String?
+  
+  // Soft deletion fields
+  isDeleted             Boolean   @default(false)
+  deletionRequestedAt   DateTime?
+  deletionRequestedBy   String?
+  deletionApprovedAt    DateTime?
+  deletionApprovedBy    String?
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
   memberships Membership[]
   folders     Folder[]
+  deletionRequests OrganizationDeletionRequest[]
 
   @@map("organizations")
 }
@@ -147,11 +156,39 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+// OrganizationDeletionRequest model - tracks deletion requests with metadata
+model OrganizationDeletionRequest {
+  id          String   @id @default(cuid())
+  reason      String?  // Optional reason for deletion
+  status      DeletionStatus @default(PENDING)
+  
+  // Foreign keys
+  organizationId String
+  requestedBy    String  // User who requested deletion
+  approvedBy     String? // User who approved deletion (nullable)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  approvedAt  DateTime? // When deletion was approved
+  
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  @@map("organization_deletion_requests")
+}
+
 // Enums
 enum Role {
   VIEW
   WRITE
   ADMIN
+}
+
+enum DeletionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
 }
 
 enum SecretType {
@@ -174,4 +211,8 @@ enum AuditAction {
   USER_INVITED
   USER_REMOVED
   ROLE_CHANGED
+  ORGANIZATION_DELETION_REQUESTED
+  ORGANIZATION_DELETION_APPROVED
+  ORGANIZATION_DELETION_REJECTED
+  ORGANIZATION_DELETED
 }

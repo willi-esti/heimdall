@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../lib/auth';
-import { OrganizationService, CreateOrganizationData, AddMemberData } from '../services/organizationService';
+import { OrganizationService, CreateOrganizationData, AddMemberData, RequestDeletionData } from '../services/organizationService';
 import { Role } from '@prisma/client';
 import { log } from '../lib/logger';
 
@@ -382,6 +382,251 @@ export class OrganizationController {
         organizationId: req.params.organizationId,
         targetUserId: req.params.userId,
         requesterId: req.user?.userId 
+      });
+      
+      res.status(500).json({ 
+        error: 'An unexpected error occurred. Please try again later.' 
+      });
+    }
+  };
+
+  // Request organization deletion
+  requestDeletion = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { organizationId } = req.params;
+      const { reason } = req.body;
+      const userId = req.user?.userId;
+
+      log.auth('Organization deletion request attempt', { organizationId, userId, reason });
+
+      if (!userId) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+
+      if (!organizationId) {
+        res.status(400).json({ error: 'Organization ID is required' });
+        return;
+      }
+
+      const data: RequestDeletionData = {
+        reason: reason?.trim(),
+      };
+
+      const deletionRequest = await this.organizationService.requestDeletion(organizationId, userId, data);
+
+      log.auth('Organization deletion requested successfully', { 
+        organizationId,
+        userId,
+        deletionRequestId: deletionRequest.id
+      });
+
+      res.status(201).json({
+        message: 'Organization deletion request submitted successfully',
+        deletionRequest,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        // Handle known business logic errors
+        const knownErrors = [
+          'Access denied',
+          'Organization not found',
+          'Organization is already deleted',
+          'Organization deletion is already pending',
+          'Service temporarily unavailable'
+        ];
+        
+        if (knownErrors.some(knownError => error.message.includes(knownError))) {
+          let statusCode = 500;
+          if (error.message.includes('Access denied')) statusCode = 403;
+          else if (error.message.includes('not found')) statusCode = 404;
+          else if (error.message.includes('already deleted') || error.message.includes('already pending')) statusCode = 409;
+          else if (error.message.includes('Service temporarily unavailable')) statusCode = 503;
+          
+          res.status(statusCode).json({ error: error.message });
+          return;
+        }
+      }
+      
+      log.error('Unexpected error requesting organization deletion', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        organizationId: req.params.organizationId,
+        userId: req.user?.userId 
+      });
+      
+      res.status(500).json({ 
+        error: 'An unexpected error occurred. Please try again later.' 
+      });
+    }
+  };
+
+  // Approve organization deletion
+  approveDeletion = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { organizationId } = req.params;
+      const userId = req.user?.userId;
+
+      log.auth('Organization deletion approval attempt', { organizationId, userId });
+
+      if (!userId) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+
+      if (!organizationId) {
+        res.status(400).json({ error: 'Organization ID is required' });
+        return;
+      }
+
+      await this.organizationService.approveDeletion(organizationId, userId);
+
+      log.auth('Organization deletion approved successfully', { 
+        organizationId,
+        userId
+      });
+
+      res.status(200).json({
+        message: 'Organization deletion approved and executed successfully',
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        // Handle known business logic errors
+        const knownErrors = [
+          'Access denied',
+          'No pending deletion request found',
+          'Cannot approve your own deletion request',
+          'Organization not found',
+          'Service temporarily unavailable'
+        ];
+        
+        if (knownErrors.some(knownError => error.message.includes(knownError))) {
+          let statusCode = 500;
+          if (error.message.includes('Access denied') || error.message.includes('Cannot approve your own')) statusCode = 403;
+          else if (error.message.includes('not found')) statusCode = 404;
+          else if (error.message.includes('Service temporarily unavailable')) statusCode = 503;
+          
+          res.status(statusCode).json({ error: error.message });
+          return;
+        }
+      }
+      
+      log.error('Unexpected error approving organization deletion', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        organizationId: req.params.organizationId,
+        userId: req.user?.userId 
+      });
+      
+      res.status(500).json({ 
+        error: 'An unexpected error occurred. Please try again later.' 
+      });
+    }
+  };
+
+  // Reject organization deletion
+  rejectDeletion = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { organizationId } = req.params;
+      const userId = req.user?.userId;
+
+      log.auth('Organization deletion rejection attempt', { organizationId, userId });
+
+      if (!userId) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+
+      if (!organizationId) {
+        res.status(400).json({ error: 'Organization ID is required' });
+        return;
+      }
+
+      await this.organizationService.rejectDeletion(organizationId, userId);
+
+      log.auth('Organization deletion rejected successfully', { 
+        organizationId,
+        userId
+      });
+
+      res.status(200).json({
+        message: 'Organization deletion request rejected successfully',
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        // Handle known business logic errors
+        const knownErrors = [
+          'Access denied',
+          'No pending deletion request found',
+          'Organization not found',
+          'Service temporarily unavailable'
+        ];
+        
+        if (knownErrors.some(knownError => error.message.includes(knownError))) {
+          let statusCode = 500;
+          if (error.message.includes('Access denied')) statusCode = 403;
+          else if (error.message.includes('not found')) statusCode = 404;
+          else if (error.message.includes('Service temporarily unavailable')) statusCode = 503;
+          
+          res.status(statusCode).json({ error: error.message });
+          return;
+        }
+      }
+      
+      log.error('Unexpected error rejecting organization deletion', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        organizationId: req.params.organizationId,
+        userId: req.user?.userId 
+      });
+      
+      res.status(500).json({ 
+        error: 'An unexpected error occurred. Please try again later.' 
+      });
+    }
+  };
+
+  // Get deletion requests for an organization
+  getDeletionRequests = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { organizationId } = req.params;
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+
+      if (!organizationId) {
+        res.status(400).json({ error: 'Organization ID is required' });
+        return;
+      }
+
+      const deletionRequests = await this.organizationService.getDeletionRequests(organizationId, userId);
+
+      res.status(200).json({
+        deletionRequests,
+        count: deletionRequests.length,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        // Handle known business logic errors
+        const knownErrors = [
+          'Access denied',
+          'Service temporarily unavailable'
+        ];
+        
+        if (knownErrors.some(knownError => error.message.includes(knownError))) {
+          let statusCode = 500;
+          if (error.message.includes('Access denied')) statusCode = 403;
+          else if (error.message.includes('Service temporarily unavailable')) statusCode = 503;
+          
+          res.status(statusCode).json({ error: error.message });
+          return;
+        }
+      }
+      
+      log.error('Unexpected error fetching deletion requests', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        organizationId: req.params.organizationId,
+        userId: req.user?.userId 
       });
       
       res.status(500).json({ 

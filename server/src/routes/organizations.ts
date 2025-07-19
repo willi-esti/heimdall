@@ -13,125 +13,226 @@ const organizationController = new OrganizationController();
  *       type: object
  *       properties:
  *         id:
+ *           typ       503:
+         description: Service temporarily unavailable
+ */
+
+/**
+ * @swagger
+ * /api/organizations/{organizationId}/deletion/request:
+ *   post:
+ *     summary: Request organization deletion
+ *     description: Requests deletion of an organization (requires ADMIN role)
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationId
+ *         required: true
+ *         schema:
  *           type: string
- *           description: Unique identifier for the organization
- *         name:
- *           type: string
- *           description: Organization name
- *         description:
- *           type: string
- *           nullable: true
- *           description: Organization description
- *         createdAt:
- *           type: string
- *           format: date-time
- *           description: Creation timestamp
- *         updatedAt:
- *           type: string
- *           format: date-time
- *           description: Last update timestamp
- *         memberships:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/MembershipWithUser'
- *         _count:
- *           type: object
- *           properties:
- *             memberships:
- *               type: integer
- *               description: Total number of members
- *     
- *     Membership:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           description: Unique identifier for the membership
- *         userId:
- *           type: string
- *           description: User ID
- *         organizationId:
- *           type: string
- *           description: Organization ID
- *         role:
- *           type: string
- *           enum: [VIEW, WRITE, ADMIN]
- *           description: User role in the organization
- *         createdAt:
- *           type: string
- *           format: date-time
- *           description: Membership creation timestamp
- *         updatedAt:
- *           type: string
- *           format: date-time
- *           description: Last update timestamp
- *     
- *     MembershipWithUser:
- *       type: object
- *       allOf:
- *         - $ref: '#/components/schemas/Membership'
- *         - type: object
- *           properties:
- *             user:
+ *         description: Organization ID
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: Optional reason for deletion
+ *     responses:
+ *       201:
+ *         description: Deletion request created successfully
+ *         content:
+ *           application/json:
+ *             schema:
  *               type: object
  *               properties:
- *                 id:
+ *                 message:
  *                   type: string
- *                 email:
+ *                   example: "Organization deletion request submitted successfully"
+ *                 deletionRequest:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     organizationId:
+ *                       type: string
+ *                     requestedBy:
+ *                       type: string
+ *                     reason:
+ *                       type: string
+ *                       nullable: true
+ *                     status:
+ *                       type: string
+ *                       enum: [PENDING, APPROVED, REJECTED, COMPLETED]
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Bad request - Organization ID is required
+ *       401:
+ *         description: Unauthorized - authentication required
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       404:
+ *         description: Organization not found
+ *       409:
+ *         description: Organization already deleted or deletion already pending
+ *       503:
+ *         description: Service temporarily unavailable
+ * 
+ * /api/organizations/{organizationId}/deletion/approve:
+ *   post:
+ *     summary: Approve organization deletion
+ *     description: Approves and executes organization deletion (requires ADMIN role, cannot approve own request)
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization ID
+ *     responses:
+ *       200:
+ *         description: Organization deletion approved and executed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
  *                   type: string
- *                 username:
+ *                   example: "Organization deletion approved and executed successfully"
+ *       400:
+ *         description: Bad request - Organization ID is required
+ *       401:
+ *         description: Unauthorized - authentication required
+ *       403:
+ *         description: Forbidden - insufficient permissions or self-approval
+ *       404:
+ *         description: Organization not found or no pending deletion request
+ *       503:
+ *         description: Service temporarily unavailable
+ * 
+ * /api/organizations/{organizationId}/deletion/reject:
+ *   post:
+ *     summary: Reject organization deletion
+ *     description: Rejects organization deletion request (requires ADMIN role)
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization ID
+ *     responses:
+ *       200:
+ *         description: Organization deletion request rejected successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
  *                   type: string
- *                 firstName:
- *                   type: string
- *                   nullable: true
- *                 lastName:
- *                   type: string
- *                   nullable: true
- *     
- *     CreateOrganizationRequest:
- *       type: object
- *       required:
- *         - name
- *       properties:
- *         name:
+ *                   example: "Organization deletion request rejected successfully"
+ *       400:
+ *         description: Bad request - Organization ID is required
+ *       401:
+ *         description: Unauthorized - authentication required
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       404:
+ *         description: Organization not found or no pending deletion request
+ *       503:
+ *         description: Service temporarily unavailable
+ * 
+ * /api/organizations/{organizationId}/deletion/requests:
+ *   get:
+ *     summary: Get deletion requests for organization
+ *     description: Retrieves all deletion requests for an organization (requires ADMIN role)
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationId
+ *         required: true
+ *         schema:
  *           type: string
- *           minLength: 2
- *           maxLength: 100
- *           description: Organization name
- *           example: "My Company"
- *         description:
- *           type: string
- *           maxLength: 500
- *           description: Organization description
- *           example: "A software development company"
- *     
- *     AddMemberRequest:
- *       type: object
- *       required:
- *         - userId
- *         - role
- *       properties:
- *         userId:
- *           type: string
- *           description: ID of the user to add as a member
- *           example: "cmd5r7bxj0000o707645mds3w"
- *         role:
- *           type: string
- *           enum: [VIEW, WRITE, ADMIN]
- *           description: Role to assign to the user
- *           example: "WRITE"
- *     
- *     UpdateRoleRequest:
- *       type: object
- *       required:
- *         - role
- *       properties:
- *         role:
- *           type: string
- *           enum: [VIEW, WRITE, ADMIN]
- *           description: New role for the user
- *           example: "ADMIN"
+ *         description: Organization ID
+ *     responses:
+ *       200:
+ *         description: Deletion requests retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 deletionRequests:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       organizationId:
+ *                         type: string
+ *                       requestedBy:
+ *                         type: string
+ *                       approvedBy:
+ *                         type: string
+ *                         nullable: true
+ *                       reason:
+ *                         type: string
+ *                         nullable: true
+ *                       status:
+ *                         type: string
+ *                         enum: [PENDING, APPROVED, REJECTED, COMPLETED]
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                       organization:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           description:
+ *                             type: string
+ *                             nullable: true
+ *                 count:
+ *                   type: integer
+ *                   description: Total number of deletion requests
+ *       400:
+ *         description: Bad request - Organization ID is required
+ *       401:
+ *         description: Unauthorized - authentication required
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       503:
+ *         description: Service temporarily unavailable
  */
+
+// Create organization
+router.post('/', authenticateToken, organizationController.createOrganization);
+
+// Get user's organizations
+router.get('/', authenticateToken, organizationController.getUserOrganizations);
 
 /**
  * @swagger
@@ -410,5 +511,11 @@ router.put('/:organizationId/members/:userId', authenticateToken, organizationCo
 
 // Remove member from organization
 router.delete('/:organizationId/members/:userId', authenticateToken, organizationController.removeMember);
+
+// Organization deletion routes
+router.post('/:organizationId/deletion/request', authenticateToken, organizationController.requestDeletion);
+router.post('/:organizationId/deletion/approve', authenticateToken, organizationController.approveDeletion);
+router.post('/:organizationId/deletion/reject', authenticateToken, organizationController.rejectDeletion);
+router.get('/:organizationId/deletion/requests', authenticateToken, organizationController.getDeletionRequests);
 
 export default router;

@@ -1,4 +1,4 @@
-import { Organization, Membership, Role, PrismaClient } from '@prisma/client';
+import { Organization, Membership, Role, OrganizationDeletionRequest, DeletionStatus, AuditAction } from '@prisma/client';
 import { log } from '../lib/logger';
 import { prisma } from '../lib/prisma';
 
@@ -10,6 +10,18 @@ export interface CreateOrganizationData {
 export interface AddMemberData {
   userId: string;
   role: Role;
+}
+
+export interface RequestDeletionData {
+  reason?: string;
+}
+
+export interface DeletionRequestWithDetails extends OrganizationDeletionRequest {
+  organization: {
+    id: string;
+    name: string;
+    description: string | null;
+  };
 }
 
 export interface OrganizationWithMembers extends Organization {
@@ -544,6 +556,477 @@ export class OrganizationService {
         organizationId,
         requesterId,
         targetUserId 
+      });
+
+      if (error instanceof Error) {
+        const dbErrorPatterns = [
+          "Can't reach database server",
+          "Authentication failed against database server",
+          "connection",
+          "ECONNREFUSED",
+          "ENOTFOUND",
+          "timeout", 
+          "database credentials",
+          "Invalid `prisma",
+          "database server at",
+          "P1001", "P1002", "P1008", "P1017"
+        ];
+        
+        const isDbError = dbErrorPatterns.some(pattern => 
+          error.message.includes(pattern)
+        );
+        
+        if (isDbError) {
+          throw new Error('Service temporarily unavailable. Please try again later.');
+        }
+        
+        // Re-throw business logic errors
+        throw error;
+      }
+      
+      throw new Error('Service temporarily unavailable. Please try again later.');
+    }
+  }
+
+  // Request organization deletion (requires ADMIN role)
+  async requestDeletion(organizationId: string, requesterId: string, data: RequestDeletionData): Promise<OrganizationDeletionRequest> {
+    try {
+      log.db('Requesting organization deletion', { organizationId, requesterId });
+
+      // Check requester permissions
+      const requesterMembership = await prisma.membership.findUnique({
+        where: {
+          userId_organizationId: {
+            userId: requesterId,
+            organizationId: organizationId
+          }
+        }
+      });
+
+      if (!requesterMembership || requesterMembership.role !== Role.ADMIN) {
+        throw new Error('Access denied: Only admins can request organization deletion');
+      }
+
+      // Check if organization exists and is not already deleted
+      const organization = await prisma.organization.findUnique({
+        where: { id: organizationId }
+      });
+
+      if (!organization) {
+        throw new Error('Organization not found');
+      }
+
+      if (organization.isDeleted) {
+        throw new Error('Organization is already deleted');
+      }
+
+      // Check if there's already a pending deletion request
+      const existingRequest = await prisma.organizationDeletionRequest.findFirst({
+        where: {
+          organizationId: organizationId,
+          status: DeletionStatus.PENDING
+        }
+      });
+
+      if (existingRequest) {
+        throw new Error('Organization deletion is already pending');
+      }
+
+      // Create deletion request and update organization in a transaction
+      const result = await prisma.$transaction(async (tx) => {
+        // Create deletion request
+        const deletionRequest = await tx.organizationDeletionRequest.create({
+          data: {
+            organizationId: organizationId,
+            requestedBy: requesterId,
+            reason: data.reason,
+            status: DeletionStatus.PENDING
+          }
+        });
+
+        // Update organization to mark deletion as requested
+        await tx.organization.update({
+          where: { id: organizationId },
+          data: {
+            deletionRequestedAt: new Date(),
+            deletionRequestedBy: requesterId
+          }
+        });
+
+        // Create audit log
+        await tx.auditLog.create({
+          data: {
+            action: AuditAction.ORGANIZATION_DELETION_REQUESTED,
+            userId: requesterId,
+            details: JSON.stringify({
+              organizationId: organizationId,
+              reason: data.reason
+            })
+          }
+        });
+
+        return deletionRequest;
+      });
+
+      log.auth('Organization deletion requested', { 
+        organizationId, 
+        requesterId,
+        reason: data.reason 
+      });
+
+      return result;
+    } catch (error) {
+      log.error('Failed to request organization deletion', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        organizationId,
+        requesterId
+      });
+
+      if (error instanceof Error) {
+        const dbErrorPatterns = [
+          "Can't reach database server",
+          "Authentication failed against database server",
+          "connection",
+          "ECONNREFUSED",
+          "ENOTFOUND",
+          "timeout", 
+          "database credentials",
+          "Invalid `prisma",
+          "database server at",
+          "P1001", "P1002", "P1008", "P1017"
+        ];
+        
+        const isDbError = dbErrorPatterns.some(pattern => 
+          error.message.includes(pattern)
+        );
+        
+        if (isDbError) {
+          throw new Error('Service temporarily unavailable. Please try again later.');
+        }
+        
+        // Re-throw business logic errors
+        throw error;
+      }
+      
+      throw new Error('Service temporarily unavailable. Please try again later.');
+    }
+  }
+
+  // Approve organization deletion (requires ADMIN role)
+  async approveDeletion(organizationId: string, approverId: string): Promise<void> {
+    try {
+      log.db('Approving organization deletion', { organizationId, approverId });
+
+      // Check approver permissions
+      const approverMembership = await prisma.membership.findUnique({
+        where: {
+          userId_organizationId: {
+            userId: approverId,
+            organizationId: organizationId
+          }
+        }
+      });
+
+      if (!approverMembership || approverMembership.role !== Role.ADMIN) {
+        throw new Error('Access denied: Only admins can approve organization deletion');
+      }
+
+      // Find pending deletion request
+      const deletionRequest = await prisma.organizationDeletionRequest.findFirst({
+        where: {
+          organizationId: organizationId,
+          status: DeletionStatus.PENDING
+        }
+      });
+
+      if (!deletionRequest) {
+        throw new Error('No pending deletion request found for this organization');
+      }
+
+      // Prevent self-approval
+      if (deletionRequest.requestedBy === approverId) {
+        throw new Error('Cannot approve your own deletion request');
+      }
+
+      // Get organization with all related data
+      const organization = await prisma.organization.findUnique({
+        where: { id: organizationId },
+        include: {
+          folders: {
+            include: {
+              secrets: true
+            }
+          },
+          memberships: {
+            include: {
+              user: true
+            }
+          }
+        }
+      });
+
+      if (!organization) {
+        throw new Error('Organization not found');
+      }
+
+      // Execute deletion process in transaction
+      await prisma.$transaction(async (tx) => {
+        // 1. Handle secrets - reassign to their creators or move to personal vault
+        for (const folder of organization.folders) {
+          for (const secret of folder.secrets) {
+            // Note: In a real implementation, you'd need to determine the original creator
+            // For now, we'll just keep them in the folder but mark the org as deleted
+            // You might want to create a "Personal Vault" organization for each user
+            log.info('Secret preserved during organization deletion', {
+              secretId: secret.id,
+              secretName: secret.name,
+              organizationId: organizationId
+            });
+          }
+        }
+
+        // 2. Remove all memberships
+        await tx.membership.deleteMany({
+          where: { organizationId: organizationId }
+        });
+
+        // 3. Update deletion request status
+        await tx.organizationDeletionRequest.update({
+          where: { id: deletionRequest.id },
+          data: {
+            status: DeletionStatus.APPROVED,
+            approvedBy: approverId
+          }
+        });
+
+        // 4. Mark organization as deleted (soft delete)
+        await tx.organization.update({
+          where: { id: organizationId },
+          data: {
+            isDeleted: true,
+            deletionApprovedAt: new Date(),
+            deletionApprovedBy: approverId
+          }
+        });
+
+        // 5. Create audit log
+        await tx.auditLog.create({
+          data: {
+            action: AuditAction.ORGANIZATION_DELETION_APPROVED,
+            userId: approverId,
+            details: JSON.stringify({
+              organizationId: organizationId,
+              requestedBy: deletionRequest.requestedBy,
+              reason: deletionRequest.reason
+            })
+          }
+        });
+
+        // 6. Final audit log for deletion
+        await tx.auditLog.create({
+          data: {
+            action: AuditAction.ORGANIZATION_DELETION_APPROVED,
+            userId: approverId,
+            details: JSON.stringify({
+              organizationId: organizationId,
+              organizationName: organization.name,
+              secretsCount: organization.folders.reduce((count, folder) => count + folder.secrets.length, 0),
+              membersCount: organization.memberships.length,
+              deletionCompleted: true
+            })
+          }
+        });
+      });
+
+      log.auth('Organization deletion approved and executed', { 
+        organizationId, 
+        approverId,
+        requestedBy: deletionRequest.requestedBy
+      });
+    } catch (error) {
+      log.error('Failed to approve organization deletion', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        organizationId,
+        approverId
+      });
+
+      if (error instanceof Error) {
+        const dbErrorPatterns = [
+          "Can't reach database server",
+          "Authentication failed against database server",
+          "connection",
+          "ECONNREFUSED",
+          "ENOTFOUND",
+          "timeout", 
+          "database credentials",
+          "Invalid `prisma",
+          "database server at",
+          "P1001", "P1002", "P1008", "P1017"
+        ];
+        
+        const isDbError = dbErrorPatterns.some(pattern => 
+          error.message.includes(pattern)
+        );
+        
+        if (isDbError) {
+          throw new Error('Service temporarily unavailable. Please try again later.');
+        }
+        
+        // Re-throw business logic errors
+        throw error;
+      }
+      
+      throw new Error('Service temporarily unavailable. Please try again later.');
+    }
+  }
+
+  // Reject organization deletion (requires ADMIN role)
+  async rejectDeletion(organizationId: string, rejectorId: string): Promise<void> {
+    try {
+      log.db('Rejecting organization deletion', { organizationId, rejectorId });
+
+      // Check rejector permissions
+      const rejectorMembership = await prisma.membership.findUnique({
+        where: {
+          userId_organizationId: {
+            userId: rejectorId,
+            organizationId: organizationId
+          }
+        }
+      });
+
+      if (!rejectorMembership || rejectorMembership.role !== Role.ADMIN) {
+        throw new Error('Access denied: Only admins can reject organization deletion');
+      }
+
+      // Find pending deletion request
+      const deletionRequest = await prisma.organizationDeletionRequest.findFirst({
+        where: {
+          organizationId: organizationId,
+          status: DeletionStatus.PENDING
+        }
+      });
+
+      if (!deletionRequest) {
+        throw new Error('No pending deletion request found for this organization');
+      }
+
+      // Update deletion request and organization in transaction
+      await prisma.$transaction(async (tx) => {
+        // Update deletion request status
+        await tx.organizationDeletionRequest.update({
+          where: { id: deletionRequest.id },
+          data: {
+            status: DeletionStatus.REJECTED,
+            approvedBy: rejectorId
+          }
+        });
+
+        // Clear deletion request fields from organization
+        await tx.organization.update({
+          where: { id: organizationId },
+          data: {
+            deletionRequestedAt: null,
+            deletionRequestedBy: null
+          }
+        });
+
+        // Create audit log
+        await tx.auditLog.create({
+          data: {
+            action: AuditAction.ORGANIZATION_DELETION_REJECTED,
+            userId: rejectorId,
+            details: JSON.stringify({
+              organizationId: organizationId,
+              requestedBy: deletionRequest.requestedBy,
+              reason: deletionRequest.reason
+            })
+          }
+        });
+      });
+
+      log.auth('Organization deletion rejected', { 
+        organizationId, 
+        rejectorId,
+        requestedBy: deletionRequest.requestedBy
+      });
+    } catch (error) {
+      log.error('Failed to reject organization deletion', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        organizationId,
+        rejectorId
+      });
+
+      if (error instanceof Error) {
+        const dbErrorPatterns = [
+          "Can't reach database server",
+          "Authentication failed against database server",
+          "connection",
+          "ECONNREFUSED",
+          "ENOTFOUND",
+          "timeout", 
+          "database credentials",
+          "Invalid `prisma",
+          "database server at",
+          "P1001", "P1002", "P1008", "P1017"
+        ];
+        
+        const isDbError = dbErrorPatterns.some(pattern => 
+          error.message.includes(pattern)
+        );
+        
+        if (isDbError) {
+          throw new Error('Service temporarily unavailable. Please try again later.');
+        }
+        
+        // Re-throw business logic errors
+        throw error;
+      }
+      
+      throw new Error('Service temporarily unavailable. Please try again later.');
+    }
+  }
+
+  // Get deletion requests for an organization (requires ADMIN role)
+  async getDeletionRequests(organizationId: string, userId: string): Promise<DeletionRequestWithDetails[]> {
+    try {
+      log.db('Fetching deletion requests', { organizationId, userId });
+
+      // Check user permissions
+      const userMembership = await prisma.membership.findUnique({
+        where: {
+          userId_organizationId: {
+            userId: userId,
+            organizationId: organizationId
+          }
+        }
+      });
+
+      if (!userMembership || userMembership.role !== Role.ADMIN) {
+        throw new Error('Access denied: Only admins can view deletion requests');
+      }
+
+      const deletionRequests = await prisma.organizationDeletionRequest.findMany({
+        where: { organizationId: organizationId },
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              description: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      log.db('Deletion requests fetched', { organizationId, userId, count: deletionRequests.length });
+      return deletionRequests;
+    } catch (error) {
+      log.error('Failed to fetch deletion requests', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        organizationId,
+        userId
       });
 
       if (error instanceof Error) {

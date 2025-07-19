@@ -1,11 +1,12 @@
 # Development Roadmap
 
 ## 📋 **Development Rules**
-1. **Environment Configuration**: Use the unique `.env` file at the root of the project and don't forget to add to the .env.example file for reference  
+1. **Environment Configuration**: Use the unique `.env` file at the root of the project and don't forget to add to the `.env.example` file for reference  
 2. **Testing Strategy**: Create a test for each API endpoint in `server/test/{endpoint}-test.ts` format using supertest.
 3. **Code Organization**: Follow MVC pattern (Routes → Controllers → Services)  
 4. **Documentation**: Maintain comprehensive docs for project memory  
-5. **Swagger Updates**: Always add or update Swagger documentation for every new or modified API endpoint to keep API docs current
+5. **Swagger Updates**: Always add or update Swagger documentation for every new or modified API endpoint to keep API docs current  
+6. **VSCode Command Results**: Sometimes you will run a command and get no result; this might be a bug with VSCode. If you have no result, don't get stuck trying to run it again—ask me to paste you the result if there is one.
 
 ---
 
@@ -147,7 +148,7 @@ All infrastructure setup tasks have been completed successfully!
 
 # 📊 **Progress Summary**
 
-**Overall Progress**: ~50% Complete
+**Overall Progress**: ~45% Complete
 
 ### ✅ **Completed Phases**
 - **Phase 1**: Infrastructure Setup (100% - All 15 tasks completed!)
