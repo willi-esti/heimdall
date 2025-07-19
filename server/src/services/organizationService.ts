@@ -743,11 +743,6 @@ export class OrganizationService {
         throw new Error('No pending deletion request found for this organization');
       }
 
-      // Prevent self-approval
-      if (deletionRequest.requestedBy === approverId) {
-        throw new Error('Cannot approve your own deletion request');
-      }
-
       // Get organization with all related data
       const organization = await prisma.organization.findUnique({
         where: { id: organizationId },

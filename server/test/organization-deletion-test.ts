@@ -208,21 +208,57 @@ async function runTests() {
     
     console.log('✅ Deletion requests retrieved successfully\n');
 
-    // Test 7: Try self-approval (should fail)
-    console.log('📝 Test 7: Testing self-approval (should fail)...');
+    // Test 7: Test self-approval (should now work)
+    console.log('📝 Test 7: Testing self-approval (should now work)...');
     
     const selfApprovalResponse = await request(app)
       .post(`/api/organizations/${organizationId}/deletion/approve`)
       .set('Authorization', `Bearer ${adminToken}`);
     
-    if (selfApprovalResponse.status !== 403) {
-      throw new Error(`Expected 403 for self-approval, got ${selfApprovalResponse.status}`);
+    if (selfApprovalResponse.status !== 200) {
+      throw new Error(`Expected 200 for self-approval, got ${selfApprovalResponse.status}: ${selfApprovalResponse.body.message}`);
     }
     
-    console.log('✅ Self-approval properly rejected\n');
+    console.log('✅ Self-approval successful - organization marked as deleted\n');
+
+    // Organization should now be deleted, so we need to create a new one for remaining tests
+    console.log('📝 Creating new organization for remaining tests...');
+    
+    const newOrgResponse = await request(app)
+      .post('/api/organizations')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Test Organization 2',
+        description: 'Second test organization for deletion testing'
+      });
+    
+    if (newOrgResponse.status !== 201) {
+      throw new Error(`Failed to create new organization: ${newOrgResponse.status}`);
+    }
+    
+    organizationId = newOrgResponse.body.organization.id;
+    
+    // Add approver to new organization
+    await request(app)
+      .post(`/api/organizations/${organizationId}/members`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        userId: approverUserId,
+        role: 'ADMIN'
+      });
+    
+    console.log('✅ New organization created and approver added\n');
 
     // Test 8: Test rejection workflow
     console.log('📝 Test 8: Testing rejection workflow...');
+    
+    // First create a new deletion request
+    await request(app)
+      .post(`/api/organizations/${organizationId}/deletion/request`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        reason: 'Testing rejection workflow'
+      });
     
     const rejectDeletionResponse = await request(app)
       .post(`/api/organizations/${organizationId}/deletion/reject`)
@@ -317,7 +353,7 @@ async function runTests() {
     console.log('- ✅ Organization creation and member management');
     console.log('- ✅ Deletion request workflow');
     console.log('- ✅ Duplicate request prevention');
-    console.log('- ✅ Self-approval prevention');
+    console.log('- ✅ Self-approval capability');
     console.log('- ✅ Rejection workflow');
     console.log('- ✅ Approval workflow');
     console.log('- ✅ Soft deletion implementation');
@@ -334,7 +370,10 @@ async function runTests() {
     await prisma.membership.deleteMany({});
     await prisma.organization.deleteMany({
       where: {
-        name: 'Test Organization for Deletion'
+        OR: [
+          { name: 'Test Organization for Deletion' },
+          { name: 'Test Organization 2' }
+        ]
       }
     });
     await prisma.user.deleteMany({

@@ -7,6 +7,7 @@
 4. **Documentation**: Maintain comprehensive docs for project memory  
 5. **Swagger Updates**: Always add or update Swagger documentation for every new or modified API endpoint to keep API docs current  
 6. **VSCode Command Results**: Sometimes you will run a command and get no result; this might be a bug with VSCode. If you have no result, don't get stuck trying to run it again—ask me to paste you the result if there is one.
+7. **Docker Test Execution**: When running tests, use `docker exec node npx ts-node test/{test-file}.ts` since the project runs in Docker containers
 
 ---
 
