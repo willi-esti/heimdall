@@ -45,14 +45,17 @@ All infrastructure setup tasks have been completed successfully!
 
 ### 📋 **Tasks** (All models already defined in Prisma schema)
 1. ✅ Define `User` model in Prisma
-2. ✅ Define `Organization` model in Prisma
+2. ✅ Define `Organization` model in Prisma with soft deletion fields
 3. ✅ Define `Membership` model in Prisma
 4. ✅ Define `Folder` model in Prisma
 5. ✅ Define `Secret` model in Prisma
 6. ✅ Define `SecretVersion` model in Prisma
-7. ✅ Define `AuditLog` model in Prisma
+7. ✅ Define `AuditLog` model in Prisma with organization deletion actions
+8. ✅ **Define `OrganizationDeletionRequest` model for deletion workflow**
+9. ✅ **Define `DeletionStatus` enum (PENDING, APPROVED, REJECTED, COMPLETED)**
+10. ✅ **Enhanced `AuditAction` enum with deletion-related actions**
 
-**Note**: All models are already implemented in the current Prisma schema
+**Note**: All models are implemented including advanced deletion workflow tracking
 
 ---
 
@@ -65,10 +68,10 @@ All infrastructure setup tasks have been completed successfully!
 2. ✅ Implement organization listing and retrieval
 3. ✅ Implement manual user addition to organization
 4. ✅ Implement membership management and rights assignment
+5. ✅ **Implement comprehensive organization deletion workflow**
 
 ### 📋 **Remaining Tasks**
 1. ⏳ Implement joining organization via invite system
-2. ✅ Create comprehensive test suite for organization endpoints
 
 ### 🎯 **Validation Results**
 - ✅ Organization creation with automatic admin assignment
@@ -78,8 +81,11 @@ All infrastructure setup tasks have been completed successfully!
 - ✅ Proper authentication integration with JWT tokens
 - ✅ Complete Swagger documentation for all endpoints
 - ✅ **Comprehensive test suite with 17 test scenarios covering all endpoints and edge cases**
+- ✅ **Organization deletion workflow with request/approval system**
+- ✅ **Soft deletion with audit trail and access control**
+- ✅ **Self-approval capability for organization owners**
 
-**Current Status**: ~90% Complete - Core functionality and testing implemented, only invite system remaining!
+**Current Status**: ~95% Complete - Core functionality, testing, and deletion workflow implemented, only invite system remaining!
 
 ---
 
@@ -109,9 +115,17 @@ All infrastructure setup tasks have been completed successfully!
 
 **Objective**: Add history tracking and audit capabilities
 
-### 📋 **Planned Tasks**
+### ✅ **Completed Tasks**
+1. ✅ Implement `AuditLog` model for access/change events
+2. ✅ **Implement organization deletion audit actions**
+3. ✅ **Integrate audit logging throughout organization workflow**
+
+### 📋 **Remaining Tasks**
 1. ⏳ Implement `SecretVersion` model to keep history
-2. ⏳ Implement `AuditLog` model for access/change events
+2. ⏳ Implement audit logging for secret operations
+3. ⏳ Implement audit logging for folder operations
+
+**Current Status**: ~40% Complete - Organization audit logging implemented, secret/folder audit logging remaining
 
 ---
 
@@ -149,16 +163,17 @@ All infrastructure setup tasks have been completed successfully!
 
 # 📊 **Progress Summary**
 
-**Overall Progress**: ~45% Complete
+**Overall Progress**: ~55% Complete
 
 ### ✅ **Completed Phases**
 - **Phase 1**: Infrastructure Setup (100% - All 15 tasks completed!)
-- **Phase 2**: Database Models (100% - All models defined)
+- **Phase 2**: Database Models (100% - All models defined including deletion workflow)
 
 ### 🔄 **Current Phase**
-- **Phase 3**: Organization Logic (80% complete)
+- **Phase 3**: Organization Logic (95% complete)
   - ✅ Core organization management implemented and tested
-  - ⏳ Invite system and testing remaining
+  - ✅ **Organization deletion workflow fully implemented**
+  - ⏳ Invite system remaining
 
 ### 📈 **Key Achievements**
 - ✅ Solid project foundation with TypeScript + Express
@@ -171,18 +186,54 @@ All infrastructure setup tasks have been completed successfully!
 - ✅ Validated production authentication endpoints
 - ✅ Organization management with role-based access control
 - ✅ Complete API documentation with Swagger
+- ✅ **Organization deletion workflow with soft deletion and audit trail**
+- ✅ **Self-approval capability for organization owners**
 
 ### 🎯 **Next Milestones**
-1. **Begin Phase 3** - Start organization management features
+1. **Complete Phase 3** - Finish organization invite system
 2. **Phase 4-5** - Core folder and secret functionality
-3. **Phase 6-7** - Audit system and frontend development
-4. **Phase 8** - Frontend containerization and final deployment setup
+3. **Phase 6** - Complete audit system for secrets and folders
+4. **Phase 7** - Frontend development
+5. **Phase 8** - Frontend containerization and final deployment setup
 
 ---
 
 # 📝 **Task Details & Notes**
 
 ## ✅ **Recently Completed**
+
+### Organization Deletion Workflow System (NEW)
+- **Status**: ✅ Complete
+- **Achievement**: Full organization deletion lifecycle management
+- **Components**:
+  - OrganizationDeletionRequest model with comprehensive tracking
+  - Enhanced Organization model with soft deletion fields
+  - DeletionStatus enum for workflow state management
+  - Enhanced AuditAction enum with deletion-specific actions
+  - Complete service layer with business logic validation
+  - Controller endpoints with proper authentication and authorization
+  - API routes with comprehensive Swagger documentation
+  - Complete test suite with 13 test scenarios
+- **Features**:
+  - Request/approval workflow with audit trail
+  - Self-approval capability for organization owners
+  - Soft deletion preserving data integrity
+  - Access prevention for deleted organizations
+  - Secret preservation during deletion
+  - Comprehensive permission validation
+  - Duplicate request prevention
+- **Security**: Admin-only operations with comprehensive audit logging
+- **Architecture**: Clean MVC separation with proper error handling
+
+### Enhanced Database Schema (UPDATED)
+- **Status**: ✅ Complete  
+- **Achievement**: Extended core models for deletion workflow
+- **Components**:
+  - Enhanced Organization model with deletion tracking fields
+  - New OrganizationDeletionRequest model for workflow management
+  - Extended AuditAction enum with organization deletion actions
+  - DeletionStatus enum for workflow state tracking
+- **Benefits**: Complete audit trail and soft deletion capabilities
 
 ### JWT Authentication Implementation
 - **Status**: ✅ Complete
@@ -230,6 +281,34 @@ All infrastructure setup tasks have been completed successfully!
 - **Architecture**: Clean MVC separation following project conventions
 - **Validation**: All endpoints tested and working correctly with JWT authentication
 
+### Organization Deletion Workflow System
+- **Status**: ✅ Complete
+- **Components**:
+  - OrganizationDeletionService with complete deletion workflow
+  - OrganizationDeletionRequest model with status tracking
+  - Enhanced Organization model with soft deletion fields
+  - DeletionStatus enum (PENDING, APPROVED, REJECTED, COMPLETED)
+  - Enhanced AuditAction enum with deletion-related actions
+  - Comprehensive deletion controller endpoints
+  - Complete API routes for deletion workflow
+- **Features**:
+  - Request organization deletion (admin-only with optional reason)
+  - Approve/reject deletion requests with audit trail
+  - Self-approval capability for organization owners
+  - Soft deletion preserving data integrity
+  - Secret preservation during deletion process
+  - Access prevention for deleted organizations
+  - Comprehensive logging and audit trail
+  - Duplicate request prevention
+  - Last admin protection during member management
+- **Security**:
+  - Admin-only access to all deletion operations
+  - Permission validation at every step
+  - Comprehensive audit logging
+  - Safe secret handling during deletion
+- **Testing**: Complete test suite with 13 test scenarios covering all deletion workflows
+- **Architecture**: Clean MVC separation with proper error handling and logging
+
 ---
 
-*This roadmap is continuously updated as development progresses. Last updated: July 17, 2025*
+*This roadmap is continuously updated as development progresses. Last updated: July 19, 2025*
