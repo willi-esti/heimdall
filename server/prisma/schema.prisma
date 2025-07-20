@@ -48,6 +48,7 @@ model Organization {
   memberships Membership[]
   folders     Folder[]
   deletionRequests OrganizationDeletionRequest[]
+  invites     OrganizationInvite[]
 
   @@map("organizations")
 }
@@ -177,6 +178,30 @@ model OrganizationDeletionRequest {
   @@map("organization_deletion_requests")
 }
 
+// OrganizationInvite model - tracks organization invitations
+model OrganizationInvite {
+  id          String   @id @default(cuid())
+  email       String   // Email address of the invited user
+  role        Role     @default(VIEW) // Role to assign when invite is accepted
+  token       String   @unique // Unique token for the invite link
+  status      InviteStatus @default(PENDING)
+  
+  // Foreign keys
+  organizationId String
+  invitedBy      String  // User who sent the invitation
+  acceptedBy     String? // User who accepted the invitation (nullable)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  expiresAt   DateTime // When the invite expires
+  acceptedAt  DateTime? // When invite was accepted
+  
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  @@map("organization_invites")
+}
+
 // Enums
 enum Role {
   VIEW
@@ -189,6 +214,13 @@ enum DeletionStatus {
   APPROVED
   REJECTED
   COMPLETED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
 }
 
 enum SecretType {
@@ -209,6 +241,8 @@ enum AuditAction {
   FOLDER_UPDATED
   FOLDER_DELETED
   USER_INVITED
+  USER_INVITE_ACCEPTED
+  USER_INVITE_REJECTED
   USER_REMOVED
   ROLE_CHANGED
   ORGANIZATION_DELETION_REQUESTED

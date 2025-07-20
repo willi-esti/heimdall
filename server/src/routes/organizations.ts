@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import { OrganizationController } from '../controllers/organizationController';
+import { InviteController } from '../controllers/inviteController';
 import { authenticateToken } from '../lib/auth';
 
 const router = Router();
 const organizationController = new OrganizationController();
+const inviteController = new InviteController();
 
 /**
  * @swagger
@@ -517,5 +519,64 @@ router.post('/:organizationId/deletion/request', authenticateToken, organization
 router.post('/:organizationId/deletion/approve', authenticateToken, organizationController.approveDeletion);
 router.post('/:organizationId/deletion/reject', authenticateToken, organizationController.rejectDeletion);
 router.get('/:organizationId/deletion/requests', authenticateToken, organizationController.getDeletionRequests);
+
+/**
+ * @swagger
+ * /api/organizations/{organizationId}/invites:
+ *   get:
+ *     summary: Get all invitations for an organization
+ *     tags: [Organizations, Invites]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization ID
+ *     responses:
+ *       200:
+ *         description: List of organization invitations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 invites:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       role:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                       invitedBy:
+ *                         type: string
+ *                       expiresAt:
+ *                         type: string
+ *                         format: date-time
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       acceptedAt:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied - requires admin role
+ *       404:
+ *         description: Organization not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/:organizationId/invites', authenticateToken, inviteController.getOrganizationInvites);
 
 export default router;

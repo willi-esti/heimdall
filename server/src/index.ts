@@ -7,6 +7,7 @@ import { log } from './lib/logger';
 import { setupSwagger } from './lib/swagger';
 import authRoutes from './routes/auth';
 import organizationRoutes from './routes/organizations';
+import inviteRoutes from './routes/invites';
 
 // Load environment variables from root .env file
 // In Docker: .env is mounted directly, in dev: look in parent directory
@@ -73,6 +74,7 @@ setupSwagger(app);
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/organizations', organizationRoutes);
+app.use('/api/invites', inviteRoutes);
 
 app.get('/', (req, res) => {
   log.api('Root endpoint accessed');
