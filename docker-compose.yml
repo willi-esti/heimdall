@@ -38,7 +38,10 @@ services:
       - "8080:80"
     depends_on:
       - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
       
 
 volumes:
   postgres_data:
+  pgadmin_data:

@@ -33,24 +33,24 @@ const authController = new AuthController();
  *               email:
  *                 type: string
  *                 format: email
- *                 example: user@example.com
+ *                 example: admin@gmail.com
  *                 description: Valid email address
  *               username:
  *                 type: string
- *                 example: johndoe
+ *                 example: admin
  *                 description: Unique username for the account
  *               password:
  *                 type: string
  *                 minLength: 8
- *                 example: SecurePassword123!
+ *                 example: admin
  *                 description: Password (minimum 8 characters)
  *               firstName:
  *                 type: string
- *                 example: John
+ *                 example: Admin
  *                 description: User's first name (optional)
  *               lastName:
  *                 type: string
- *                 example: Doe
+ *                 example: User
  *                 description: User's last name (optional)
  *     responses:
  *       201:
@@ -119,15 +119,15 @@ router.post('/register', authController.register);
  *               email:
  *                 type: string
  *                 format: email
- *                 example: user@example.com
+ *                 example: admin@gmail.com
  *                 description: Email address (provide either email or username)
  *               username:
  *                 type: string
- *                 example: johndoe
+ *                 example: admin
  *                 description: Username (provide either email or username)
  *               password:
  *                 type: string
- *                 example: SecurePassword123!
+ *                 example: admin
  *                 description: User password
  *             oneOf:
  *               - required: [email]
