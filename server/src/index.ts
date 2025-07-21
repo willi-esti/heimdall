@@ -8,6 +8,7 @@ import { setupSwagger } from './lib/swagger';
 import authRoutes from './routes/auth';
 import organizationRoutes from './routes/organizations';
 import inviteRoutes from './routes/invites';
+import folderRoutes from './routes/folders';
 
 // Load environment variables from root .env file
 // In Docker: .env is mounted directly, in dev: look in parent directory
@@ -60,6 +61,26 @@ app.use((req, res, next) => {
 // Middleware
 app.use(express.json());
 
+// JSON parsing error handler
+app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (error instanceof SyntaxError && 'body' in error) {
+    log.error('Invalid JSON in request body', {
+      ip: req.ip,
+      method: req.method,
+      url: req.url,
+      userAgent: req.get('User-Agent'),
+      error: error.message
+    });
+    
+    return res.status(400).json({
+      error: 'Invalid JSON format',
+      message: 'The request body contains invalid JSON. Please check your JSON syntax.',
+      details: 'Common issues: trailing commas, unquoted property names, or malformed strings'
+    });
+  }
+  next();
+});
+
 // Security: Block documentation routes in production
 if (process.env.NODE_ENV === 'production') {
   app.use('/api-docs*', (req, res) => {
@@ -75,6 +96,7 @@ setupSwagger(app);
 app.use('/api/auth', authRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/invites', inviteRoutes);
+app.use('/api/folders', folderRoutes);
 
 app.get('/', (req, res) => {
   log.api('Root endpoint accessed');
@@ -166,3 +188,6 @@ app.listen(PORT, () => {
     logLevel: process.env.LOG_LEVEL,
   });
 });
+
+// Export app for testing
+export { app };

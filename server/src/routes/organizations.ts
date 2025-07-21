@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { OrganizationController } from '../controllers/organizationController';
 import { InviteController } from '../controllers/inviteController';
+import { FolderController, organizationIdValidation } from '../controllers/folderController';
 import { authenticateToken } from '../lib/auth';
 
 const router = Router();
 const organizationController = new OrganizationController();
 const inviteController = new InviteController();
+const folderController = new FolderController();
 
 /**
  * @swagger
@@ -578,5 +580,81 @@ router.get('/:organizationId/deletion/requests', authenticateToken, organization
  *         description: Internal server error
  */
 router.get('/:organizationId/invites', authenticateToken, inviteController.getOrganizationInvites);
+
+/**
+ * @swagger
+ * /api/organizations/{organizationId}/folders:
+ *   get:
+ *     summary: Get all folders in an organization
+ *     tags: [Folders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the organization
+ *     responses:
+ *       200:
+ *         description: Organization folders retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 folders:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Folder'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Insufficient permissions
+ *       404:
+ *         description: Organization not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/:organizationId/folders', authenticateToken, organizationIdValidation, folderController.getOrganizationFolders);
+
+/**
+ * @swagger
+ * /api/organizations/{organizationId}/folders/tree:
+ *   get:
+ *     summary: Get folder tree structure for an organization
+ *     tags: [Folders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the organization
+ *     responses:
+ *       200:
+ *         description: Folder tree retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 folderTree:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Folder'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Insufficient permissions
+ *       404:
+ *         description: Organization not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/:organizationId/folders/tree', authenticateToken, organizationIdValidation, folderController.getFolderTree);
 
 export default router;
