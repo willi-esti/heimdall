@@ -9,6 +9,7 @@ import authRoutes from './routes/auth';
 import organizationRoutes from './routes/organizations';
 import inviteRoutes from './routes/invites';
 import folderRoutes from './routes/folders';
+import secretRoutes from './routes/secrets';
 
 // Load environment variables from root .env file
 // In Docker: .env is mounted directly, in dev: look in parent directory
@@ -97,6 +98,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/folders', folderRoutes);
+app.use('/api/secrets', secretRoutes);
 
 app.get('/', (req, res) => {
   log.api('Root endpoint accessed');

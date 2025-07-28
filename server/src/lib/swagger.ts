@@ -19,6 +19,24 @@ const swaggerDefinition = {
       url: 'https://opensource.org/licenses/MIT',
     },
   },
+  tags: [
+    {
+      name: 'Authentication',
+      description: 'User authentication and authorization endpoints',
+    },
+    {
+      name: 'Organizations',
+      description: 'Organization management endpoints',
+    },
+    {
+      name: 'Folders',
+      description: 'Folder management and hierarchy endpoints',
+    },
+    {
+      name: 'Secrets',
+      description: 'Encrypted secret management endpoints',
+    },
+  ],
   servers: [
     {
       url: process.env.NODE_ENV === 'production' 
@@ -105,6 +123,111 @@ const swaggerDefinition = {
           },
         },
         required: ['accessToken', 'refreshToken', 'expiresIn'],
+      },
+      Secret: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Unique secret identifier',
+          },
+          name: {
+            type: 'string',
+            description: 'Secret name',
+          },
+          description: {
+            type: 'string',
+            description: 'Optional secret description',
+          },
+          type: {
+            type: 'string',
+            enum: ['GENERIC', 'PASSWORD', 'API_KEY', 'TOKEN', 'CERTIFICATE', 'DATABASE_URL'],
+            description: 'Type of the secret',
+          },
+          folderId: {
+            type: 'string',
+            description: 'ID of the folder containing this secret',
+          },
+          createdAt: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Secret creation timestamp',
+          },
+          updatedAt: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Last update timestamp',
+          },
+          folder: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                description: 'Folder ID',
+              },
+              name: {
+                type: 'string',
+                description: 'Folder name',
+              },
+              organization: {
+                type: 'object',
+                properties: {
+                  id: {
+                    type: 'string',
+                    description: 'Organization ID',
+                  },
+                  name: {
+                    type: 'string',
+                    description: 'Organization name',
+                  },
+                },
+              },
+            },
+          },
+        },
+        required: ['id', 'name', 'type', 'folderId', 'createdAt', 'updatedAt'],
+      },
+      SecretWithValue: {
+        allOf: [
+          { $ref: '#/components/schemas/Secret' },
+          {
+            type: 'object',
+            properties: {
+              value: {
+                type: 'string',
+                description: 'Decrypted secret value',
+              },
+            },
+            required: ['value'],
+          },
+        ],
+      },
+      SecretVersion: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Unique version identifier',
+          },
+          version: {
+            type: 'integer',
+            description: 'Version number',
+          },
+          changeNote: {
+            type: 'string',
+            description: 'Optional note about changes in this version',
+          },
+          createdAt: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Version creation timestamp',
+          },
+          createdBy: {
+            type: 'string',
+            description: 'ID of user who created this version',
+          },
+        },
+        required: ['id', 'version', 'createdAt', 'createdBy'],
       },
     },
   },

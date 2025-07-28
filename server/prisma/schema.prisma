@@ -40,6 +40,8 @@ model Organization {
   deletionRequestedBy   String?
   deletionApprovedAt    DateTime?
   deletionApprovedBy    String?
+  deletionReason        String?   // Reason for deletion
+  deletionCompletedAt   DateTime? // When deletion was actually completed
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -162,6 +164,7 @@ model OrganizationDeletionRequest {
   id          String   @id @default(cuid())
   reason      String?  // Optional reason for deletion
   status      DeletionStatus @default(PENDING)
+  approvalNotes String? // Notes from the approver
   
   // Foreign keys
   organizationId String
@@ -248,5 +251,6 @@ enum AuditAction {
   ORGANIZATION_DELETION_REQUESTED
   ORGANIZATION_DELETION_APPROVED
   ORGANIZATION_DELETION_REJECTED
+  ORGANIZATION_DELETION_COMPLETED
   ORGANIZATION_DELETED
 }
