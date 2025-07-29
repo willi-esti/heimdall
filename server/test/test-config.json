@@ -1,0 +1,83 @@
+{
+  "baseUrl": "http://localhost:3000/api",
+  "fixedData": {
+    "user": {
+      "email": "admin@gmail.com",
+      "username": "admin",
+      "password": "admin",
+      "firstName": "Admin",
+      "lastName": "User"
+    },
+    "organization": {
+      "name": "Test Organization",
+      "description": "Main organization for testing purposes"
+    },
+    "folder": {
+      "name": "Test Folder",
+      "description": "Main folder for testing secrets"
+    },
+    "secret": {
+      "name": "DATABASE_URL",
+      "description": "Production database connection string",
+      "value": "postgresql://user:password@db.example.com:5432/myapp",
+      "type": "DATABASE_URL"
+    }
+  },
+  "testData": {
+    "users": [
+      {
+        "email": "testuser1@example.com",
+        "username": "testuser1",
+        "password": "TestUser123!",
+        "firstName": "Test",
+        "lastName": "User1"
+      },
+      {
+        "email": "testuser2@example.com",
+        "username": "testuser2",
+        "password": "TestUser123!",
+        "firstName": "Test",
+        "lastName": "User2"
+      },
+      {
+        "email": "viewuser@example.com",
+        "username": "viewuser",
+        "password": "ViewUser123!",
+        "firstName": "View",
+        "lastName": "User"
+      }
+    ],
+    "secrets": [
+      {
+        "name": "STRIPE_API_KEY",
+        "description": "Stripe payment processing API key",
+        "value": "sk_live_fake_key_for_testing_only_not_real",
+        "type": "API_KEY"
+      },
+      {
+        "name": "JWT_SECRET",
+        "description": "JWT signing secret",
+        "value": "super-secret-jwt-key-for-testing",
+        "type": "TOKEN"
+      },
+      {
+        "name": "ADMIN_PASSWORD",
+        "description": "Admin user password",
+        "value": "super-secure-admin-password-123",
+        "type": "PASSWORD"
+      }
+    ]
+  },
+  "endpoints": {
+    "auth": {
+      "register": "/auth/register",
+      "login": "/auth/login",
+      "me": "/auth/me",
+      "refresh": "/auth/refresh"
+    },
+    "organizations": "/organizations",
+    "folders": "/folders",
+    "secrets": "/secrets",
+    "invites": "/invites"
+  }
+}
