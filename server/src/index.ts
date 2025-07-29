@@ -5,6 +5,7 @@ import path from 'path';
 import { prisma } from './lib/prisma';
 import { log } from './lib/logger';
 import { setupSwagger } from './lib/swagger';
+import { envValidator, EnvValidationError } from './lib/envValidator';
 import authRoutes from './routes/auth';
 import organizationRoutes from './routes/organizations';
 import inviteRoutes from './routes/invites';
@@ -17,6 +18,24 @@ const envPath = process.env.NODE_ENV === 'production' || process.env.DOCKER
   ? '.env' 
   : path.join(__dirname, '../../.env');
 dotenv.config({ path: envPath });
+
+// Validate environment variables before starting the application
+try {
+  log.startup('🚀 STARTUP: Starting Heimdall Secrets Manager...');
+  envValidator.validateAndThrow();
+  log.startup('✅ STARTUP: Environment validation passed');
+} catch (error) {
+  if (error instanceof EnvValidationError) {
+    log.error('❌ STARTUP FAILED: Environment validation errors detected');
+    log.error(error.message);
+    log.error('Please fix the above environment variable issues before starting the server.');
+    log.error('📋 Environment Summary:', envValidator.getEnvironmentSummary());
+    process.exit(1);
+  } else {
+    log.error('❌ STARTUP FAILED: Unexpected error during environment validation:', error);
+    process.exit(1);
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
