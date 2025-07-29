@@ -6,16 +6,16 @@ import { log } from '../src/lib/logger';
 const envPath = path.join(__dirname, '../../.env');
 dotenv.config({ path: envPath });
 
-console.log('Testing Custom Logger...\n');
+console.log('🧪 Testing Enhanced Logger with File Information...\n');
 
 async function testLogger() {
   try {
-    // Test different log levels
-    log.debug('This is a debug message with technical details');
-    log.info('This is an info message for general information');
-    log.warn('This is a warning message about potential issues');
-    log.error('This is an error message for serious problems');
-    log.http('This is an HTTP request/response log');
+    // Test different log levels - these should now show file and line info
+    log.debug('This is a debug message with file information');
+    log.info('This is an info message showing file location');
+    log.warn('This is a warning message with file tracking');
+    log.error('This is an error message with file details');
+    log.http('This is an HTTP log with file information');
 
     console.log('\n--- Testing specialized logging methods ---\n');
 

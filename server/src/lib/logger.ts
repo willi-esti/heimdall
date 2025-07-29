@@ -1,5 +1,44 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
+import path from 'path';
+
+// Helper function to get caller file information
+const getCallerInfo = (): { file: string; line: number; column: number } => {
+  const originalFunc = Error.prepareStackTrace;
+  
+  let callerFile = 'unknown';
+  let callerLine = 0;
+  let callerColumn = 0;
+  
+  try {
+    const err = new Error();
+    Error.prepareStackTrace = (_, stack) => stack;
+    
+    const stack = err.stack as unknown as NodeJS.CallSite[];
+    
+    // Find the first stack frame that's not from this logger file
+    const loggerFile = __filename;
+    for (let i = 0; i < stack.length; i++) {
+      const frame = stack[i];
+      const fileName = frame.getFileName();
+      
+      if (fileName && fileName !== loggerFile && !fileName.includes('node_modules')) {
+        // Get relative path from project root
+        const relativePath = path.relative(process.cwd(), fileName);
+        callerFile = relativePath.startsWith('..') ? path.basename(fileName) : relativePath;
+        callerLine = frame.getLineNumber() || 0;
+        callerColumn = frame.getColumnNumber() || 0;
+        break;
+      }
+    }
+  } catch (e) {
+    // Fallback if stack trace fails
+  } finally {
+    Error.prepareStackTrace = originalFunc;
+  }
+  
+  return { file: callerFile, line: callerLine, column: callerColumn };
+};
 
 // Define chalk colors as functions since we'll handle coloring differently
 const colors = {
@@ -42,7 +81,7 @@ const consoleFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.errors({ stack: true }),
   winston.format.printf((info) => {
-    const { timestamp, level, message, stack, ...extra } = info;
+    const { timestamp, level, message, stack, file, line, ...extra } = info;
     
     // Add emojis for different log levels
     const emojiMap: Record<string, string> = {
@@ -62,6 +101,9 @@ const consoleFormat = winston.format.combine(
     const timestampStr = typeof timestamp === 'string' ? timestamp : String(timestamp);
     const coloredTimestamp = colorize(timestampStr, 'gray');
     
+    // Format file location if available
+    const fileLocation = file && line ? colorize(`[${file}:${line}]`, 'cyan') + ' ' : '';
+    
     // Format message
     let formattedMessage = String(message);
     
@@ -73,7 +115,7 @@ const consoleFormat = winston.format.combine(
     // Add extra fields if present
     const extraFields = Object.keys(extra).length > 0 ? '\n' + JSON.stringify(extra, null, 2) : '';
     
-    return `${emoji} ${coloredTimestamp} [${coloredLevel}] ${formattedMessage}${extraFields}`;
+    return `${emoji} ${coloredTimestamp} [${coloredLevel}] ${fileLocation}${formattedMessage}${extraFields}`;
   })
 );
 
@@ -147,31 +189,64 @@ try {
 
 // Helper functions for common use cases
 export const log = {
-  // Standard logging methods
-  error: (message: string, meta?: any) => logger.error(message, meta),
-  warn: (message: string, meta?: any) => logger.warn(message, meta),
-  info: (message: string, meta?: any) => logger.info(message, meta),
-  http: (message: string, meta?: any) => logger.http(message, meta),
-  debug: (message: string, meta?: any) => logger.debug(message, meta),
+  // Standard logging methods with automatic file info
+  error: (message: string, meta?: any) => {
+    const callerInfo = getCallerInfo();
+    logger.error(message, { ...meta, file: callerInfo.file, line: callerInfo.line });
+  },
+  warn: (message: string, meta?: any) => {
+    const callerInfo = getCallerInfo();
+    logger.warn(message, { ...meta, file: callerInfo.file, line: callerInfo.line });
+  },
+  info: (message: string, meta?: any) => {
+    const callerInfo = getCallerInfo();
+    logger.info(message, { ...meta, file: callerInfo.file, line: callerInfo.line });
+  },
+  http: (message: string, meta?: any) => {
+    const callerInfo = getCallerInfo();
+    logger.http(message, { ...meta, file: callerInfo.file, line: callerInfo.line });
+  },
+  debug: (message: string, meta?: any) => {
+    const callerInfo = getCallerInfo();
+    logger.debug(message, { ...meta, file: callerInfo.file, line: callerInfo.line });
+  },
   
   // Convenience methods for common scenarios
-  auth: (message: string, meta?: any) => logger.info(`🔐 AUTH: ${message}`, meta),
-  db: (message: string, meta?: any) => logger.debug(`🗄️  DB: ${message}`, meta),
-  api: (message: string, meta?: any) => logger.http(`🌐 API: ${message}`, meta),
-  security: (message: string, meta?: any) => logger.warn(`🛡️  SECURITY: ${message}`, meta),
-  startup: (message: string, meta?: any) => logger.info(`🚀 STARTUP: ${message}`, meta),
+  auth: (message: string, meta?: any) => {
+    const callerInfo = getCallerInfo();
+    logger.info(`🔐 AUTH: ${message}`, { ...meta, file: callerInfo.file, line: callerInfo.line });
+  },
+  db: (message: string, meta?: any) => {
+    const callerInfo = getCallerInfo();
+    logger.debug(`🗄️  DB: ${message}`, { ...meta, file: callerInfo.file, line: callerInfo.line });
+  },
+  api: (message: string, meta?: any) => {
+    const callerInfo = getCallerInfo();
+    logger.http(`🌐 API: ${message}`, { ...meta, file: callerInfo.file, line: callerInfo.line });
+  },
+  security: (message: string, meta?: any) => {
+    const callerInfo = getCallerInfo();
+    logger.warn(`🛡️  SECURITY: ${message}`, { ...meta, file: callerInfo.file, line: callerInfo.line });
+  },
+  startup: (message: string, meta?: any) => {
+    const callerInfo = getCallerInfo();
+    logger.info(`🚀 STARTUP: ${message}`, { ...meta, file: callerInfo.file, line: callerInfo.line });
+  },
   
   // Request logging helper
   request: (req: any, res: any) => {
     const { method, url, ip, headers } = req;
     const userAgent = headers['user-agent'] || 'Unknown';
     const start = Date.now();
+    const callerInfo = getCallerInfo();
     
     // Log request
     logger.http(`${method} ${url}`, {
       ip,
       userAgent,
       userId: req.user?.userId || 'anonymous',
+      file: callerInfo.file,
+      line: callerInfo.line,
     });
     
     // Log response when finished
@@ -184,15 +259,20 @@ export const log = {
         statusCode,
         duration: `${duration}ms`,
         userId: req.user?.userId || 'anonymous',
+        file: callerInfo.file,
+        line: callerInfo.line,
       });
     });
   },
   
-  // Error logging with context
+  // Error logging with context and automatic file info
   errorWithContext: (error: Error, context?: string, meta?: any) => {
+    const callerInfo = getCallerInfo();
     logger.error(`${context ? `[${context}] ` : ''}${error.message}`, {
       error: error.name,
       stack: error.stack,
+      file: callerInfo.file,
+      line: callerInfo.line,
       ...meta,
     });
   },
