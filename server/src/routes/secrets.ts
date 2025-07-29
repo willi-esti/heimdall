@@ -4,7 +4,8 @@ import {
   createSecretValidation,
   updateSecretValidation,
   secretIdValidation,
-  folderIdValidation
+  folderIdValidation,
+  versionValidation
 } from '../controllers/secretController';
 import { authenticateToken } from '../lib/auth';
 
@@ -351,6 +352,65 @@ router.get('/:secretId/versions/all-values', secretIdValidation, secretControlle
  *         description: Secret or version not found
  */
 router.get('/:secretId/versions/:version/value', secretIdValidation, secretController.getSecretVersionValue);
+
+/**
+ * @swagger
+ * /api/secrets/{secretId}/versions/{version}:
+ *   delete:
+ *     summary: Delete a specific secret version
+ *     description: |
+ *       Permanently deletes a specific version of a secret. 
+ *       
+ *       **Restrictions:**
+ *       - Cannot delete the current (latest) version
+ *       - Cannot delete the last remaining version
+ *       - Requires WRITE permissions
+ *       
+ *       This action creates an audit log entry and cannot be undone.
+ *     tags: [Secrets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/secretId'
+ *       - in: path
+ *         name: version
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Version number to delete
+ *         example: 2
+ *     responses:
+ *       200:
+ *         description: Secret version deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Secret version deleted successfully"
+ *       400:
+ *         description: Bad request (validation error, current version, or last version)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Cannot delete the current version"
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       404:
+ *         description: Secret or version not found
+ *       500:
+ *         description: Internal server error
+ */
+router.delete('/:secretId/versions/:version', versionValidation, secretController.deleteSecretVersion);
 
 /**
  * @swagger

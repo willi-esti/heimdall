@@ -686,4 +686,73 @@ export class SecretService {
 
     return decryptedVersions;
   }
+
+  /**
+   * Delete a specific secret version
+   */
+  async deleteSecretVersion(secretId: string, versionNumber: number, userId: string): Promise<void> {
+    // Check secret access with WRITE permission for version deletion
+    const hasAccess = await this.checkSecretAccess(userId, secretId, Role.WRITE);
+    if (!hasAccess) {
+      throw new Error('Access denied: Write permissions required to delete secret versions');
+    }
+
+    // Check if version exists
+    const version = await prisma.secretVersion.findFirst({
+      where: { 
+        secretId,
+        version: versionNumber
+      }
+    });
+
+    if (!version) {
+      throw new Error('Secret version not found');
+    }
+
+    // Check if this is the only version - prevent deletion of the last version
+    const versionCount = await prisma.secretVersion.count({
+      where: { secretId }
+    });
+
+    if (versionCount <= 1) {
+      throw new Error('Cannot delete the last remaining version. Delete the entire secret instead.');
+    }
+
+    // Check if this is the current version (highest version number)
+    const latestVersion = await prisma.secretVersion.findFirst({
+      where: { secretId },
+      orderBy: { version: 'desc' }
+    });
+
+    if (latestVersion && latestVersion.version === versionNumber) {
+      throw new Error('Cannot delete the current version. You can only delete historical versions.');
+    }
+
+    // Delete the version
+    await prisma.secretVersion.delete({
+      where: { id: version.id }
+    });
+
+    // Create audit log for version deletion
+    await prisma.auditLog.create({
+      data: {
+        action: 'SECRET_VERSION_DELETED',
+        details: JSON.stringify({
+          secretId,
+          version: versionNumber,
+          versionId: version.id,
+          deletedBy: userId
+        }),
+        userId,
+        secretId: secretId
+      }
+    });
+
+    logger.info('Secret version deleted successfully', {
+      secretId,
+      version: versionNumber,
+      versionId: version.id,
+      deletedBy: userId
+    });
+  }
 }

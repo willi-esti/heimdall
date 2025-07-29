@@ -29,6 +29,11 @@ export const folderIdValidation = [
   param('folderId').notEmpty().withMessage('Folder ID is required')
 ];
 
+export const versionValidation = [
+  param('secretId').notEmpty().withMessage('Secret ID is required'),
+  param('version').isInt({ min: 1 }).withMessage('Version must be a positive integer')
+];
+
 // Helper function to handle validation errors
 const handleValidationErrors = (req: any, res: Response): boolean => {
   const errors = validationResult(req);
@@ -793,6 +798,118 @@ export class SecretController {
         }
         if (error.message.includes('not found')) {
           res.status(404).json({ error: error.message });
+          return;
+        }
+      }
+
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+
+  /**
+   * Delete a specific secret version
+   * DELETE /api/secrets/:secretId/versions/:version
+   * 
+   * @swagger
+   * /api/secrets/{secretId}/versions/{version}:
+   *   delete:
+   *     tags: [Secrets]
+   *     summary: Delete a specific secret version
+   *     description: |
+   *       Permanently deletes a specific version of a secret. 
+   *       
+   *       **Restrictions:**
+   *       - Cannot delete the current (latest) version
+   *       - Cannot delete the last remaining version
+   *       - Requires WRITE permissions
+   *       
+   *       This action creates an audit log entry and cannot be undone.
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: secretId
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: ID of the secret
+   *       - in: path
+   *         name: version
+   *         required: true
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *         description: Version number to delete
+   *     responses:
+   *       200:
+   *         description: Secret version deleted successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   example: "Secret version deleted successfully"
+   *       400:
+   *         description: Bad request (validation error, current version, or last version)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 error:
+   *                   type: string
+   *                   example: "Cannot delete the current version"
+   *       401:
+   *         description: Unauthorized
+   *       403:
+   *         description: Forbidden - insufficient permissions
+   *       404:
+   *         description: Secret or version not found
+   *       500:
+   *         description: Internal server error
+   */
+  deleteSecretVersion = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      // Check validation errors
+      if (handleValidationErrors(req, res)) {
+        return;
+      }
+
+      const { secretId, version } = req.params;
+      const versionNumber = parseInt(version);
+
+      if (isNaN(versionNumber) || versionNumber < 1) {
+        res.status(400).json({ error: 'Invalid version number. Must be a positive integer.' });
+        return;
+      }
+
+      await this.secretService.deleteSecretVersion(secretId, versionNumber, userId);
+
+      res.status(200).json({ 
+        message: 'Secret version deleted successfully'
+      });
+    } catch (error) {
+      logger.error('Error deleting secret version:', error);
+
+      if (error instanceof Error) {
+        if (error.message.includes('Access denied')) {
+          res.status(403).json({ error: error.message });
+          return;
+        }
+        if (error.message.includes('not found')) {
+          res.status(404).json({ error: error.message });
+          return;
+        }
+        if (error.message.includes('Cannot delete')) {
+          res.status(400).json({ error: error.message });
           return;
         }
       }
