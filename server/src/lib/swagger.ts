@@ -229,6 +229,74 @@ const swaggerDefinition = {
         },
         required: ['id', 'version', 'createdAt', 'createdBy'],
       },
+      SecretVersionWithValue: {
+        allOf: [
+          { $ref: '#/components/schemas/SecretVersion' },
+          {
+            type: 'object',
+            properties: {
+              value: {
+                type: 'string',
+                description: 'Decrypted secret value from this version',
+              },
+            },
+            required: ['value'],
+          },
+        ],
+      },
+      CreateSecretRequest: {
+        type: 'object',
+        properties: {
+          name: {
+            type: 'string',
+            description: 'Secret name (must be unique within folder)',
+            maxLength: 255,
+          },
+          description: {
+            type: 'string',
+            description: 'Optional secret description',
+            maxLength: 1000,
+          },
+          value: {
+            type: 'string',
+            description: 'Secret value (will be encrypted before storage)',
+          },
+          type: {
+            type: 'string',
+            enum: ['GENERIC', 'PASSWORD', 'API_KEY', 'TOKEN', 'CERTIFICATE', 'DATABASE_URL'],
+            description: 'Type of the secret',
+          },
+          folderId: {
+            type: 'string',
+            description: 'ID of the folder to store this secret in',
+          },
+        },
+        required: ['name', 'value', 'type', 'folderId'],
+      },
+      UpdateSecretRequest: {
+        type: 'object',
+        properties: {
+          name: {
+            type: 'string',
+            description: 'Secret name (must be unique within folder)',
+            maxLength: 255,
+          },
+          description: {
+            type: 'string',
+            description: 'Optional secret description',
+            maxLength: 1000,
+          },
+          value: {
+            type: 'string',
+            description: 'Secret value (will be encrypted before storage)',
+          },
+          type: {
+            type: 'string',
+            enum: ['GENERIC', 'PASSWORD', 'API_KEY', 'TOKEN', 'CERTIFICATE', 'DATABASE_URL'],
+            description: 'Type of the secret',
+          },
+        },
+      },
     },
   },
   security: [

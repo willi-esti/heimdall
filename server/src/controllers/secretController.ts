@@ -705,4 +705,99 @@ export class SecretController {
       res.status(500).json({ error: 'Internal server error' });
     }
   };
+
+  /**
+   * Get specific secret version with decrypted value
+   * GET /api/secrets/:secretId/versions/:version/value
+   */
+  getSecretVersionValue = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      // Check validation errors
+      if (handleValidationErrors(req, res)) {
+        return;
+      }
+
+      const { secretId, version } = req.params;
+      const versionNumber = parseInt(version);
+
+      if (isNaN(versionNumber) || versionNumber < 1) {
+        res.status(400).json({ error: 'Invalid version number' });
+        return;
+      }
+
+      const versionData = await this.secretService.getSecretVersionValue(secretId, versionNumber, userId);
+
+      res.status(200).json({
+        version: versionData
+      });
+    } catch (error) {
+      logger.error('Error getting secret version value:', error);
+
+      if (error instanceof Error) {
+        if (error.message.includes('Access denied')) {
+          res.status(403).json({ error: error.message });
+          return;
+        }
+        if (error.message.includes('not found')) {
+          res.status(404).json({ error: error.message });
+          return;
+        }
+        if (error.message.includes('Failed to decrypt')) {
+          res.status(500).json({ error: 'Failed to decrypt secret version' });
+          return;
+        }
+      }
+
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+
+  /**
+   * Get secret versions with all decrypted values (admin-only)
+   * GET /api/secrets/:secretId/versions/all-values
+   */
+  getSecretVersionsWithValues = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      // Check validation errors
+      if (handleValidationErrors(req, res)) {
+        return;
+      }
+
+      const { secretId } = req.params;
+
+      const versions = await this.secretService.getSecretVersionsWithValues(secretId, userId);
+
+      res.status(200).json({
+        versions,
+        warning: 'This endpoint provides access to all historical secret values. Use with caution.'
+      });
+    } catch (error) {
+      logger.error('Error getting secret versions with values:', error);
+
+      if (error instanceof Error) {
+        if (error.message.includes('Access denied')) {
+          res.status(403).json({ error: error.message });
+          return;
+        }
+        if (error.message.includes('not found')) {
+          res.status(404).json({ error: error.message });
+          return;
+        }
+      }
+
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
 }

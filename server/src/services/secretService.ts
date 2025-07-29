@@ -565,4 +565,125 @@ export class SecretService {
 
     return versions;
   }
+
+  /**
+   * Get a specific secret version with decrypted value
+   */
+  async getSecretVersionValue(secretId: string, versionNumber: number, userId: string): Promise<any> {
+    // Check secret access
+    const hasAccess = await this.checkSecretAccess(userId, secretId, Role.VIEW);
+    if (!hasAccess) {
+      throw new Error('Access denied: Insufficient permissions to view secret versions');
+    }
+
+    const version = await prisma.secretVersion.findFirst({
+      where: { 
+        secretId,
+        version: versionNumber
+      },
+      select: {
+        id: true,
+        version: true,
+        changeNote: true,
+        encryptedValue: true,
+        createdAt: true,
+        createdBy: true
+      }
+    });
+
+    if (!version) {
+      throw new Error('Secret version not found');
+    }
+
+    // Decrypt the value
+    const decryptionResult = this.encryptionService.decrypt(version.encryptedValue);
+    if (!decryptionResult.success) {
+      throw new Error('Failed to decrypt secret version value');
+    }
+
+    // Create audit log for viewing historical version
+    await prisma.auditLog.create({
+      data: {
+        action: 'SECRET_VIEWED',
+        details: JSON.stringify({
+          secretId,
+          version: versionNumber,
+          action: 'historical_value_accessed'
+        }),
+        userId,
+        secretId: secretId
+      }
+    });
+
+    return {
+      id: version.id,
+      version: version.version,
+      changeNote: version.changeNote,
+      value: decryptionResult.decryptedData,
+      createdAt: version.createdAt,
+      createdBy: version.createdBy
+    };
+  }
+
+  /**
+   * Get secret versions with decrypted values (admin-only due to security)
+   */
+  async getSecretVersionsWithValues(secretId: string, userId: string): Promise<any[]> {
+    // Check secret access with ADMIN permission for bulk historical access
+    const hasAccess = await this.checkSecretAccess(userId, secretId, Role.ADMIN);
+    if (!hasAccess) {
+      throw new Error('Access denied: Admin permissions required to view all historical values');
+    }
+
+    const versions = await prisma.secretVersion.findMany({
+      where: { secretId },
+      orderBy: { version: 'desc' },
+      select: {
+        id: true,
+        version: true,
+        changeNote: true,
+        encryptedValue: true,
+        createdAt: true,
+        createdBy: true
+      }
+    });
+
+    const decryptedVersions = [];
+    for (const version of versions) {
+      const decryptionResult = this.encryptionService.decrypt(version.encryptedValue);
+      if (decryptionResult.success) {
+        decryptedVersions.push({
+          id: version.id,
+          version: version.version,
+          changeNote: version.changeNote,
+          value: decryptionResult.decryptedData,
+          createdAt: version.createdAt,
+          createdBy: version.createdBy
+        });
+      } else {
+        // Log decryption failure but continue with other versions
+        logger.error('Failed to decrypt secret version', {
+          secretId,
+          versionId: version.id,
+          version: version.version
+        });
+      }
+    }
+
+    // Create audit log for bulk historical access
+    await prisma.auditLog.create({
+      data: {
+        action: 'SECRET_VIEWED',
+        details: JSON.stringify({
+          secretId,
+          action: 'bulk_historical_values_accessed',
+          versionsCount: decryptedVersions.length
+        }),
+        userId,
+        secretId: secretId
+      }
+    });
+
+    return decryptedVersions;
+  }
 }
