@@ -184,6 +184,46 @@ register_and_login() {
     echo "$login_response" | jq -r '.token'
 }
 
+# Function to register a user from config data and return token (handles existing users)
+register_and_login_from_data() {
+    local user_data="$1"
+    
+    # Extract fields from JSON data
+    local email=$(echo "$user_data" | jq -r '.email')
+    local username=$(echo "$user_data" | jq -r '.username')
+    local password=$(echo "$user_data" | jq -r '.password')
+    local firstName=$(echo "$user_data" | jq -r '.firstName')
+    local lastName=$(echo "$user_data" | jq -r '.lastName')
+    
+    # Try to register user first
+    local register_response=$(curl -s -X POST "$BASE_URL/auth/register" \
+        -H "Content-Type: application/json" \
+        -d "$user_data")
+    
+    # Check if registration was successful
+    if echo "$register_response" | jq -e '.token' > /dev/null 2>&1; then
+        # Registration successful, return token
+        echo "$register_response" | jq -r '.token'
+        return 0
+    fi
+    
+    # Registration failed (likely user exists), try to login
+    local login_data="{\"identifier\":\"$email\",\"password\":\"$password\"}"
+    local login_response=$(curl -s -X POST "$BASE_URL/auth/login" \
+        -H "Content-Type: application/json" \
+        -d "$login_data")
+    
+    # Check if login was successful
+    if echo "$login_response" | jq -e '.token' > /dev/null 2>&1; then
+        # Login successful, return token
+        echo "$login_response" | jq -r '.token'
+        return 0
+    fi
+    
+    # Both registration and login failed
+    return 1
+}
+
 # Function to create organization and return ID
 create_organization() {
     local token="$1"
@@ -305,5 +345,7 @@ validate_json_field() {
 # Export functions for use in other scripts
 export -f print_success print_error print_warning print_info
 export -f print_test_header print_section_header
-export -f make_request register_and_login create_organization create_folder create_secret
+export -f make_request register_and_login register_and_login_from_data create_organization create_folder create_secret
 export -f cleanup_test_user generate_test_report wait_for_input validate_json_field
+export -f get_user_data get_org_data get_folder_data get_secret_data get_invite_data get_login_data
+export -f get_user_data get_org_data get_folder_data get_secret_data get_invite_data get_login_data

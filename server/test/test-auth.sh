@@ -170,6 +170,7 @@ pause_if_enabled
 
 # Cleanup test user (Note: In a real scenario, we'd implement a cleanup endpoint)
 print_info "Note: Test user 'testuser1@example.com' should be manually cleaned up if needed"
+print_info "Run ./cleanup-test-data.sh to clean up test organizations and temporary files"
 
 # Generate test report
 generate_test_report

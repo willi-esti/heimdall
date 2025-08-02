@@ -18,10 +18,8 @@ fi
 
 # Create a fresh organization for invite tests
 print_info "Setting up test organization for invites..."
-ORG_RESPONSE=$(curl -s -X POST "$BASE_URL/organizations" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Invite Test Org", "description": "Organization for invite testing"}')
+INVITE_ORG_DATA=$(get_org_data "inviteTest")
+ORG_RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/organizations' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$INVITE_ORG_DATA'" "Create organization for invite tests")
 
 ORG_ID=$(echo "$ORG_RESPONSE" | jq -r '.organization.id')
 if [ "$ORG_ID" = "null" ]; then
@@ -30,24 +28,20 @@ if [ "$ORG_ID" = "null" ]; then
 fi
 
 # Create test users
-USER_ADMIN_TOKEN=$(register_and_login "inviteadmin@example.com" "inviteadmin" "InviteAdmin123!" "Invite" "Admin")
-USER_MEMBER_TOKEN=$(register_and_login "invitemember@example.com" "invitemember" "InviteMember123!" "Invite" "Member")
+INVITE_ADMIN_USER=$(get_user_data "inviteAdmin")
+INVITE_MEMBER_USER=$(get_user_data "inviteMember")
+
+USER_ADMIN_TOKEN=$(register_and_login_from_data "$INVITE_ADMIN_USER")
+USER_MEMBER_TOKEN=$(register_and_login_from_data "$INVITE_MEMBER_USER")
 
 # Add admin user to organization
-curl -s -X POST "$BASE_URL/organizations/$ORG_ID/members" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"email": "inviteadmin@example.com", "role": "ADMIN"}' > /dev/null
+ADMIN_MEMBER_DATA=$(echo "$INVITE_ADMIN_USER" | jq '. | {email: .email, role: "ADMIN"}')
+execute_curl "curl -s -X POST '$BASE_URL/organizations/$ORG_ID/members' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$ADMIN_MEMBER_DATA'" "Add admin user to organization" > /dev/null
 
 # Test 1: Create Invitation - Valid Data
 print_test_header "Create Invitation - Valid Data"
-INVITE_DATA='{
-  "email": "newuser@example.com",
-  "role": "WRITE",
-  "organizationId": "'$ORG_ID'"
-}'
-RESPONSE=$(curl -s -X POST "$BASE_URL/invites" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
+INVITE_DATA=$(get_invite_data "validInvite" | jq --arg orgId "$ORG_ID" '. + {organizationId: $orgId}')
+RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/invites' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$INVITE_DATA'" "Create invitation")
   -H "Content-Type: application/json" \
   -d "$INVITE_DATA")
 

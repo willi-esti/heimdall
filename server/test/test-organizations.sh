@@ -11,23 +11,65 @@ print_section_header "ORGANIZATIONS API TESTS"
 # Get admin token (should be created by auth tests)
 if [ -f "/tmp/admin_token" ]; then
     ADMIN_TOKEN=$(cat /tmp/admin_token)
+    print_info "Using existing admin token for tests"
 else
-    print_error "Admin token not found. Please run auth tests first."
-    exit 1
+    print_warning "Admin token not found. Attempting to create admin user..."
+    
+    # Try to create admin user from config
+    ADMIN_USER_DATA=$(get_user_data "admin" 2>/dev/null)
+    if [ -z "$ADMIN_USER_DATA" ]; then
+        # Fallback to fixed admin data
+        ADMIN_USER_DATA='{"email":"admin@gmail.com","username":"admin","password":"admin","firstName":"Admin","lastName":"User"}'
+    fi
+    
+    # Try to register admin user
+    ADMIN_RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/auth/register' -H 'Content-Type: application/json' -d '$ADMIN_USER_DATA'" "Register admin user" 2>/dev/null)
+    
+    if echo "$ADMIN_RESPONSE" | jq -e '.token' > /dev/null 2>&1; then
+        ADMIN_TOKEN=$(echo "$ADMIN_RESPONSE" | jq -r '.token')
+        echo "$ADMIN_TOKEN" > /tmp/admin_token
+        print_success "Admin user created and logged in"
+    else
+        # Try to login if user already exists
+        ADMIN_LOGIN_DATA='{"identifier":"admin@gmail.com","password":"admin"}'
+        ADMIN_LOGIN_RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/auth/login' -H 'Content-Type: application/json' -d '$ADMIN_LOGIN_DATA'" "Login admin user" 2>/dev/null)
+        
+        if echo "$ADMIN_LOGIN_RESPONSE" | jq -e '.token' > /dev/null 2>&1; then
+            ADMIN_TOKEN=$(echo "$ADMIN_LOGIN_RESPONSE" | jq -r '.token')
+            echo "$ADMIN_TOKEN" > /tmp/admin_token
+            print_success "Admin user logged in successfully"
+        else
+            print_error "Could not create or login admin user. Please run auth tests first."
+            exit 1
+        fi
+    fi
 fi
 
 # Create test users for organization membership tests
-print_info "Setting up test users..."
-USER1_TOKEN=$(register_and_login "orgtest1@example.com" "orgtest1" "OrgTest123!" "Test" "User1")
-USER2_TOKEN=$(register_and_login "orgtest2@example.com" "orgtest2" "OrgTest123!" "Test" "User2")
-VIEW_USER_TOKEN=$(register_and_login "viewuser@example.com" "viewuser" "ViewUser123!" "View" "User")
+print_info "Setting up test users (will reuse if they exist)..."
+ORG_USER1_DATA=$(get_user_data "orgTest1")
+ORG_USER2_DATA=$(get_user_data "orgTest2")
+VIEW_USER_DATA=$(get_user_data "viewUser")
+
+# Register users (they may already exist from previous test runs)
+USER1_TOKEN=$(register_and_login_from_data "$ORG_USER1_DATA")
+if [ -n "$USER1_TOKEN" ]; then
+    print_success "User 1 (orgTest1) ready for testing"
+else
+    print_warning "User 1 setup failed, but continuing tests"
+fi
+
+USER2_TOKEN=$(register_and_login_from_data "$ORG_USER2_DATA")
+if [ -n "$USER2_TOKEN" ]; then
+    print_success "User 2 (orgTest2) ready for testing"
+else
+    print_warning "User 2 setup failed, but continuing tests"
+fi
+VIEW_USER_TOKEN=$(register_and_login_from_data "$VIEW_USER_DATA")
 
 # Test 1: Create Organization - Valid Data
 print_test_header "Create Organization - Valid Data"
-ORG_DATA='{
-  "name": "Test Organization",
-  "description": "Main organization for testing purposes"
-}'
+ORG_DATA=$(get_org_data "valid")
 RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/organizations' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$ORG_DATA'" "Create organization")
 
 ORG_ID=$(echo "$RESPONSE" | jq -r '.organization.id')
@@ -43,25 +85,22 @@ pause_if_enabled
 
 # Test 2: Create Organization - Duplicate Name (409)
 print_test_header "Create Organization - Duplicate Name"
-make_request "POST" "/organizations" "$ORG_DATA" "409" "$ADMIN_TOKEN" "Duplicate organization name"
+DUPLICATE_ORG_DATA=$(get_org_data "duplicate")
+make_request "POST" "/organizations" "$DUPLICATE_ORG_DATA" "409" "$ADMIN_TOKEN" "Duplicate organization name"
 
 # Test 3: Create Organization - No Token (401)
 print_test_header "Create Organization - No Token"
-make_request "POST" "/organizations" "$ORG_DATA" "401" "" "Create organization without token"
+VALID_ORG_DATA=$(get_org_data "secondary")
+make_request "POST" "/organizations" "$VALID_ORG_DATA" "401" "" "Create organization without token"
 
 # Test 4: Create Organization - Missing Name (400)
 print_test_header "Create Organization - Missing Name"
-INVALID_ORG_DATA='{
-  "description": "Organization without name"
-}'
+INVALID_ORG_DATA=$(get_org_data "missingName")
 make_request "POST" "/organizations" "$INVALID_ORG_DATA" "400" "$ADMIN_TOKEN" "Missing organization name"
 
 # Test 5: Create Organization - Empty Name (400)
 print_test_header "Create Organization - Empty Name"
-EMPTY_NAME_DATA='{
-  "name": "",
-  "description": "Organization with empty name"
-}'
+EMPTY_NAME_DATA='{"name": "", "description": "Organization with empty name"}'
 make_request "POST" "/organizations" "$EMPTY_NAME_DATA" "400" "$ADMIN_TOKEN" "Empty organization name"
 
 # Test 6: Get User Organizations
@@ -84,13 +123,29 @@ make_request "GET" "/organizations/non-existent-id" "" "404" "$ADMIN_TOKEN" "Non
 print_test_header "Get Organization by ID - No Access"
 make_request "GET" "/organizations/$ORG_ID" "" "403" "$USER1_TOKEN" "No access to organization"
 
-# Test 11: Add Member to Organization - Valid Data
+# Test 11: Add Member to Organization - Valid Data (201)
 print_test_header "Add Member to Organization - Valid Data"
-ADD_MEMBER_DATA='{
-  "email": "orgtest1@example.com",
-  "role": "WRITE"
-}'
+ADD_MEMBER_DATA=$(get_user_data "orgTest1" | jq '. | {email: .email, role: "VIEW"}')
 make_request "POST" "/organizations/$ORG_ID/members" "$ADD_MEMBER_DATA" "201" "$ADMIN_TOKEN" "Add member to organization"
+
+# Test 12: Add Member to Organization - Non-existent User (404)
+print_test_header "Add Member to Organization - Non-existent User"
+NONEXISTENT_MEMBER_DATA='{"email": "nonexistent@example.com", "role": "VIEW"}'
+make_request "POST" "/organizations/$ORG_ID/members" "$NONEXISTENT_MEMBER_DATA" "404" "$ADMIN_TOKEN" "Add non-existent user"
+
+# Test 13: Add Member to Organization - Already Member (409)
+print_test_header "Add Member to Organization - Already Member"
+make_request "POST" "/organizations/$ORG_ID/members" "$ADD_MEMBER_DATA" "409" "$ADMIN_TOKEN" "Add existing member"
+
+# Test 14: Add Member to Organization - Not Admin (403)
+print_test_header "Add Member to Organization - Not Admin"
+ADD_MEMBER_DATA2=$(get_user_data "orgTest2" | jq '. | {email: .email, role: "VIEW"}')
+make_request "POST" "/organizations/$ORG_ID/members" "$ADD_MEMBER_DATA2" "403" "$USER1_TOKEN" "Add member without admin rights"
+
+# Test 15: Add Member to Organization - Invalid Role (400)
+print_test_header "Add Member to Organization - Invalid Role"
+INVALID_ROLE_DATA=$(get_user_data "orgTest2" | jq '. | {email: .email, role: "INVALID_ROLE"}')
+make_request "POST" "/organizations/$ORG_ID/members" "$INVALID_ROLE_DATA" "400" "$ADMIN_TOKEN" "Invalid role"
 
 # Test 12: Add Member to Organization - Non-existent User (404)
 print_test_header "Add Member to Organization - Non-existent User"

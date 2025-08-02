@@ -2,6 +2,7 @@
   "baseUrl": "http://localhost:3000/api",
   "fixedData": {
     "user": {
+      "id": "admin",
       "email": "admin@gmail.com",
       "username": "admin",
       "password": "admin",
@@ -26,6 +27,7 @@
   "testData": {
     "users": [
       {
+        "id": "testuser1",
         "email": "testuser1@example.com",
         "username": "testuser1",
         "password": "TestUser123!",
@@ -33,6 +35,7 @@
         "lastName": "User1"
       },
       {
+        "id": "testuser2",
         "email": "testuser2@example.com",
         "username": "testuser2",
         "password": "TestUser123!",
@@ -40,31 +43,263 @@
         "lastName": "User2"
       },
       {
+        "id": "viewuser",
         "email": "viewuser@example.com",
         "username": "viewuser",
         "password": "ViewUser123!",
         "firstName": "View",
         "lastName": "User"
+      },
+      {
+        "id": "orgTest1",
+        "email": "orgtest1@example.com",
+        "username": "orgtest1",
+        "password": "OrgTest123!",
+        "firstName": "Organization",
+        "lastName": "Test1"
+      },
+      {
+        "id": "orgTest2",
+        "email": "orgtest2@example.com",
+        "username": "orgtest2",
+        "password": "OrgTest123!",
+        "firstName": "Organization",
+        "lastName": "Test2"
+      },
+      {
+        "id": "folderWrite",
+        "email": "folderwrite@example.com",
+        "username": "folderwrite",
+        "password": "FolderWrite123!",
+        "firstName": "Folder",
+        "lastName": "Writer"
+      },
+      {
+        "id": "folderView",
+        "email": "folderview@example.com",
+        "username": "folderview",
+        "password": "FolderView123!",
+        "firstName": "Folder",
+        "lastName": "Viewer"
+      },
+      {
+        "id": "secretWrite",
+        "email": "secretwrite@example.com",
+        "username": "secretwrite",
+        "password": "SecretWrite123!",
+        "firstName": "Secret",
+        "lastName": "Writer"
+      },
+      {
+        "id": "secretView",
+        "email": "secretview@example.com",
+        "username": "secretview",
+        "password": "SecretView123!",
+        "firstName": "Secret",
+        "lastName": "Viewer"
+      },
+      {
+        "id": "inviteAdmin",
+        "email": "inviteadmin@example.com",
+        "username": "inviteadmin",
+        "password": "InviteAdmin123!",
+        "firstName": "Invite",
+        "lastName": "Admin"
+      },
+      {
+        "id": "inviteMember",
+        "email": "invitemember@example.com",
+        "username": "invitemember",
+        "password": "InviteMember123!",
+        "firstName": "Invite",
+        "lastName": "Member"
+      },
+      {
+        "id": "invalid",
+        "email": "invalid-email",
+        "username": "invalid",
+        "password": "Invalid123!",
+        "firstName": "Invalid",
+        "lastName": "User"
+      },
+      {
+        "id": "missingPassword",
+        "email": "missing@example.com",
+        "username": "missing",
+        "firstName": "Missing",
+        "lastName": "Password"
+      },
+      {
+        "id": "shortPassword",
+        "email": "short@example.com",
+        "username": "short",
+        "password": "123",
+        "firstName": "Short",
+        "lastName": "Password"
+      },
+      {
+        "id": "nonexistent",
+        "email": "nonexistent@example.com",
+        "username": "nonexistent",
+        "password": "NonExistent123!",
+        "firstName": "Non",
+        "lastName": "Existent"
+      }
+    ],
+    "organizations": [
+      {
+        "id": "valid",
+        "name": "Test Organization",
+        "description": "Test organization for comprehensive testing"
+      },
+      {
+        "id": "duplicate",
+        "name": "Test Organization",
+        "description": "Duplicate organization name test"
+      },
+      {
+        "id": "secondary",
+        "name": "Secondary Test Org",
+        "description": "Secondary organization for testing"
+      },
+      {
+        "id": "updated",
+        "name": "TestOrg Updated",
+        "description": "Updated test organization"
+      },
+      {
+        "id": "missingName",
+        "description": "Organization without name"
+      },
+      {
+        "id": "folderTest",
+        "name": "Folder Test Org",
+        "description": "Organization for folder testing"
+      },
+      {
+        "id": "secretTest",
+        "name": "Secret Test Org",
+        "description": "Organization for secret testing"
+      },
+      {
+        "id": "inviteTest",
+        "name": "Invite Test Org",
+        "description": "Organization for invite testing"
+      }
+    ],
+    "folders": [
+      {
+        "id": "rootFolder",
+        "name": "Test Folder",
+        "description": "Root folder for testing"
+      },
+      {
+        "id": "childFolder",
+        "name": "Child Folder",
+        "description": "Child folder for testing"
+      },
+      {
+        "id": "missingName",
+        "description": "Folder without name"
+      },
+      {
+        "id": "deleteTest",
+        "name": "To Delete Folder",
+        "description": "Folder to be deleted"
+      },
+      {
+        "id": "secretFolder",
+        "name": "Secret Test Folder",
+        "description": "Folder for secret testing"
+      },
+      {
+        "id": "secretFolder2",
+        "name": "Secret Test Folder 2",
+        "description": "Second folder for secret testing"
       }
     ],
     "secrets": [
       {
+        "id": "testSecret",
+        "name": "Test Secret",
+        "description": "Secret for testing",
+        "value": "secret_value_123",
+        "type": "API_KEY"
+      },
+      {
+        "id": "multiVersionSecret",
+        "name": "Multi Version Secret",
+        "description": "Secret with multiple versions",
+        "value": "version_1_value",
+        "type": "TOKEN"
+      },
+      {
+        "id": "STRIPE_API_KEY",
         "name": "STRIPE_API_KEY",
         "description": "Stripe payment processing API key",
         "value": "sk_live_fake_key_for_testing_only_not_real",
         "type": "API_KEY"
       },
       {
+        "id": "JWT_SECRET",
         "name": "JWT_SECRET",
         "description": "JWT signing secret",
         "value": "super-secret-jwt-key-for-testing",
         "type": "TOKEN"
       },
       {
+        "id": "ADMIN_PASSWORD",
         "name": "ADMIN_PASSWORD",
         "description": "Admin user password",
         "value": "super-secure-admin-password-123",
         "type": "PASSWORD"
+      }
+    ],
+    "invites": [
+      {
+        "id": "validInvite",
+        "email": "newuser@example.com",
+        "role": "WRITE"
+      },
+      {
+        "id": "duplicateInvite",
+        "email": "newuser@example.com",
+        "role": "VIEW"
+      },
+      {
+        "id": "invalidRole",
+        "email": "invalidrole@example.com",
+        "role": "INVALID_ROLE"
+      }
+    ],
+    "loginData": [
+      {
+        "id": "valid",
+        "identifier": "testuser1@example.com",
+        "password": "TestUser123!"
+      },
+      {
+        "id": "validUsername",
+        "identifier": "testuser1",
+        "password": "TestUser123!"
+      },
+      {
+        "id": "invalid",
+        "identifier": "testuser1@example.com",
+        "password": "WrongPassword123!"
+      },
+      {
+        "id": "nonexistent",
+        "identifier": "nonexistent@example.com",
+        "password": "TestUser123!"
+      },
+      {
+        "id": "missingPassword",
+        "identifier": "testuser1@example.com"
+      },
+      {
+        "id": "missingIdentifier",
+        "password": "TestUser123!"
       }
     ]
   },

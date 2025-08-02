@@ -18,10 +18,8 @@ fi
 
 # Create a fresh organization and folder for secret tests
 print_info "Setting up test organization and folder for secrets..."
-ORG_RESPONSE=$(curl -s -X POST "$BASE_URL/organizations" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Secret Test Org", "description": "Organization for secret testing"}')
+SECRET_ORG_DATA=$(get_org_data "secretTest")
+ORG_RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/organizations' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$SECRET_ORG_DATA'" "Create organization for secret tests")
 
 ORG_ID=$(echo "$ORG_RESPONSE" | jq -r '.organization.id')
 if [ "$ORG_ID" = "null" ]; then
@@ -29,10 +27,8 @@ if [ "$ORG_ID" = "null" ]; then
     exit 1
 fi
 
-FOLDER_RESPONSE=$(curl -s -X POST "$BASE_URL/folders" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Secret Test Folder", "description": "Folder for secret testing", "organizationId": "'$ORG_ID'"}')
+SECRET_FOLDER_DATA=$(get_folder_data "secretFolder" | jq --arg orgId "$ORG_ID" '. + {organizationId: $orgId}')
+FOLDER_RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/folders' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$SECRET_FOLDER_DATA'" "Create folder for secret tests")
 
 FOLDER_ID=$(echo "$FOLDER_RESPONSE" | jq -r '.folder.id')
 if [ "$FOLDER_ID" = "null" ]; then
@@ -41,26 +37,23 @@ if [ "$FOLDER_ID" = "null" ]; then
 fi
 
 # Create test users with different permissions
-USER_WRITE_TOKEN=$(register_and_login "secretwrite@example.com" "secretwrite" "SecretWrite123!" "Secret" "Writer")
-USER_VIEW_TOKEN=$(register_and_login "secretview@example.com" "secretview" "SecretView123!" "Secret" "Viewer")
+SECRET_WRITE_USER=$(get_user_data "secretWrite")
+SECRET_VIEW_USER=$(get_user_data "secretView")
+
+USER_WRITE_TOKEN=$(register_and_login_from_data "$SECRET_WRITE_USER")
+USER_VIEW_TOKEN=$(register_and_login_from_data "$SECRET_VIEW_USER")
 
 # Add users to organization with specific roles
-curl -s -X POST "$BASE_URL/organizations/$ORG_ID/members" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"email": "secretwrite@example.com", "role": "WRITE"}' > /dev/null
+WRITE_MEMBER_DATA=$(echo "$SECRET_WRITE_USER" | jq '. | {email: .email, role: "WRITE"}')
+VIEW_MEMBER_DATA=$(echo "$SECRET_VIEW_USER" | jq '. | {email: .email, role: "VIEW"}')
 
-curl -s -X POST "$BASE_URL/organizations/$ORG_ID/members" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"email": "secretview@example.com", "role": "VIEW"}' > /dev/null
+execute_curl "curl -s -X POST '$BASE_URL/organizations/$ORG_ID/members' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$WRITE_MEMBER_DATA'" "Add write user to organization" > /dev/null
+
+execute_curl "curl -s -X POST '$BASE_URL/organizations/$ORG_ID/members' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$VIEW_MEMBER_DATA'" "Add view user to organization" > /dev/null
 
 # Test 1: Create Secret - Valid Data
 print_test_header "Create Secret - Valid Data"
-SECRET_DATA='{
-  "name": "Test Secret",
-  "description": "Secret for testing",
-  "value": "secret_value_123",
+SECRET_DATA=$(get_secret_data "testSecret" | jq --arg folderId "$FOLDER_ID" '. + {folderId: $folderId}')
   "folderId": "'$FOLDER_ID'"
 }'
 RESPONSE=$(curl -s -X POST "$BASE_URL/secrets" \
@@ -264,23 +257,13 @@ make_request "DELETE" "/secrets/$SECRET_ID/versions/1" "" "403" "$USER_VIEW_TOKE
 # Test 29: Delete Secret Version - WRITE User (200)
 print_test_header "Delete Secret Version - WRITE User"
 # Create a secret with multiple versions for WRITE user
-MULTI_VERSION_SECRET='{
-  "name": "Multi Version Secret",
-  "description": "Secret with multiple versions",
-  "value": "version_1_value",
-  "folderId": "'$FOLDER_ID'"
-}'
-RESPONSE=$(curl -s -X POST "$BASE_URL/secrets" \
-  -H "Authorization: Bearer $USER_WRITE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "$MULTI_VERSION_SECRET")
+MULTI_VERSION_SECRET=$(get_secret_data "multiVersionSecret" | jq --arg folderId "$FOLDER_ID" '. + {folderId: $folderId}')
+RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/secrets' -H 'Authorization: Bearer $USER_WRITE_TOKEN' -H 'Content-Type: application/json' -d '$MULTI_VERSION_SECRET'" "Create multi-version secret")
 MULTI_SECRET_ID=$(echo "$RESPONSE" | jq -r '.secret.id')
 
 # Create version 2
-curl -s -X PUT "$BASE_URL/secrets/$MULTI_SECRET_ID" \
-  -H "Authorization: Bearer $USER_WRITE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Multi Version Secret", "description": "Second version", "value": "version_2_value"}' > /dev/null
+VERSION_2_DATA=$(get_secret_data "multiVersionSecret" | jq '. + {description: "Second version", value: "version_2_value"}')
+execute_curl "curl -s -X PUT '$BASE_URL/secrets/$MULTI_SECRET_ID' -H 'Authorization: Bearer $USER_WRITE_TOKEN' -H 'Content-Type: application/json' -d '$VERSION_2_DATA'" "Create second version" > /dev/null
 
 make_request "DELETE" "/secrets/$MULTI_SECRET_ID/versions/1" "" "200" "$USER_WRITE_TOKEN" "Delete version with WRITE role"
 
@@ -295,22 +278,16 @@ make_request "GET" "/secrets/search?q=Test" "" "200" "$ADMIN_TOKEN" "Search secr
 # Test 32: Move Secret to Different Folder
 print_test_header "Move Secret to Different Folder"
 # Create another folder
-FOLDER2_RESPONSE=$(curl -s -X POST "$BASE_URL/folders" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Secret Test Folder 2", "description": "Second folder for secret testing", "organizationId": "'$ORG_ID'"}')
+SECRET_FOLDER2_DATA=$(get_folder_data "secretFolder2" | jq --arg orgId "$ORG_ID" '. + {organizationId: $orgId}')
+FOLDER2_RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/folders' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$SECRET_FOLDER2_DATA'" "Create second folder for move test")
 FOLDER2_ID=$(echo "$FOLDER2_RESPONSE" | jq -r '.folder.id')
 
-MOVE_SECRET_DATA='{
-  "folderId": "'$FOLDER2_ID'"
-}'
+MOVE_SECRET_DATA='{"folderId": "'$FOLDER2_ID'"}'
 make_request "PUT" "/secrets/$SECRET_ID/move" "$MOVE_SECRET_DATA" "200" "$ADMIN_TOKEN" "Move secret to different folder"
 
 # Test 33: Move Secret - Non-existent Folder (404)
 print_test_header "Move Secret - Non-existent Folder"
-MOVE_NONEXISTENT_FOLDER='{
-  "folderId": "non-existent-folder-id"
-}'
+MOVE_NONEXISTENT_FOLDER='{"folderId": "non-existent-folder-id"}'
 make_request "PUT" "/secrets/$SECRET_ID/move" "$MOVE_NONEXISTENT_FOLDER" "404" "$ADMIN_TOKEN" "Move to non-existent folder"
 
 # Test 34: Move Secret - No Token (401)

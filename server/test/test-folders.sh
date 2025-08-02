@@ -18,10 +18,8 @@ fi
 
 # Create a fresh organization for folder tests
 print_info "Setting up test organization for folders..."
-ORG_RESPONSE=$(curl -s -X POST "$BASE_URL/organizations" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Folder Test Org", "description": "Organization for folder testing"}')
+FOLDER_ORG_DATA=$(get_org_data "folderTest")
+ORG_RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/organizations' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$FOLDER_ORG_DATA'" "Create organization for folder tests")
 
 ORG_ID=$(echo "$ORG_RESPONSE" | jq -r '.organization.id')
 if [ "$ORG_ID" = "null" ]; then
@@ -30,31 +28,28 @@ if [ "$ORG_ID" = "null" ]; then
 fi
 
 # Create test users with different permissions
-USER_WRITE_TOKEN=$(register_and_login "folderwrite@example.com" "folderwrite" "FolderWrite123!" "Folder" "Writer")
-USER_VIEW_TOKEN=$(register_and_login "folderview@example.com" "folderview" "FolderView123!" "Folder" "Viewer")
+FOLDER_WRITE_USER=$(get_user_data "folderWrite")
+FOLDER_VIEW_USER=$(get_user_data "folderView")
+
+USER_WRITE_TOKEN=$(register_and_login_from_data "$FOLDER_WRITE_USER")
+USER_VIEW_TOKEN=$(register_and_login_from_data "$FOLDER_VIEW_USER")
 
 # Add users to organization with specific roles
-curl -s -X POST "$BASE_URL/organizations/$ORG_ID/members" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"email": "folderwrite@example.com", "role": "WRITE"}' > /dev/null
+WRITE_MEMBER_DATA=$(echo "$FOLDER_WRITE_USER" | jq '. | {email: .email, role: "WRITE"}')
+VIEW_MEMBER_DATA=$(echo "$FOLDER_VIEW_USER" | jq '. | {email: .email, role: "VIEW"}')
 
-curl -s -X POST "$BASE_URL/organizations/$ORG_ID/members" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"email": "folderview@example.com", "role": "VIEW"}' > /dev/null
+execute_curl "curl -s -X POST '$BASE_URL/organizations/$ORG_ID/members' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$WRITE_MEMBER_DATA'" "Add write user to organization" > /dev/null
+
+execute_curl "curl -s -X POST '$BASE_URL/organizations/$ORG_ID/members' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$VIEW_MEMBER_DATA'" "Add view user to organization" > /dev/null
 
 # Test 1: Create Root Folder - Valid Data
 print_test_header "Create Root Folder - Valid Data"
-ROOT_FOLDER_DATA='{
-  "name": "Test Folder",
+ROOT_FOLDER_DATA=$(get_folder_data "rootFolder")
+make_request "POST" "/organizations/$ORG_ID/folders" "$ROOT_FOLDER_DATA" "201" "$ADMIN_TOKEN" "Create root folder"
   "description": "Main folder for testing secrets",
   "organizationId": "'$ORG_ID'"
-}'
-RESPONSE=$(curl -s -X POST "$BASE_URL/folders" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "$ROOT_FOLDER_DATA")
+ROOT_FOLDER_DATA=$(get_folder_data "rootFolder" | jq --arg orgId "$ORG_ID" '. + {organizationId: $orgId}')
+RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/folders' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$ROOT_FOLDER_DATA'" "Create root folder")
 
 ROOT_FOLDER_ID=$(echo "$RESPONSE" | jq -r '.folder.id')
 if [ "$ROOT_FOLDER_ID" != "null" ]; then
@@ -68,16 +63,8 @@ TESTS_RUN=$((TESTS_RUN + 1))
 
 # Test 2: Create Child Folder - Valid Data
 print_test_header "Create Child Folder - Valid Data"
-CHILD_FOLDER_DATA='{
-  "name": "Child Folder",
-  "description": "Child folder for testing",
-  "organizationId": "'$ORG_ID'",
-  "parentId": "'$ROOT_FOLDER_ID'"
-}'
-RESPONSE=$(curl -s -X POST "$BASE_URL/folders" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "$CHILD_FOLDER_DATA")
+CHILD_FOLDER_DATA=$(get_folder_data "childFolder" | jq --arg orgId "$ORG_ID" --arg parentId "$ROOT_FOLDER_ID" '. + {organizationId: $orgId, parentId: $parentId}')
+RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/folders' -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '$CHILD_FOLDER_DATA'" "Create child folder")
 
 CHILD_FOLDER_ID=$(echo "$RESPONSE" | jq -r '.folder.id')
 if [ "$CHILD_FOLDER_ID" != "null" ]; then
@@ -95,10 +82,7 @@ make_request "POST" "/folders" "$ROOT_FOLDER_DATA" "401" "" "Create folder witho
 
 # Test 4: Create Folder - Missing Name (400)
 print_test_header "Create Folder - Missing Name"
-INVALID_FOLDER_DATA='{
-  "description": "Folder without name",
-  "organizationId": "'$ORG_ID'"
-}'
+INVALID_FOLDER_DATA=$(get_folder_data "missingName" | jq --arg orgId "$ORG_ID" '. + {organizationId: $orgId}')
 make_request "POST" "/folders" "$INVALID_FOLDER_DATA" "400" "$ADMIN_TOKEN" "Missing folder name"
 
 # Test 5: Create Folder - Missing Organization ID (400)
@@ -282,10 +266,8 @@ make_request "DELETE" "/folders/$WRITE_FOLDER_ID" "" "403" "$USER_VIEW_TOKEN" "D
 # Test 36: Delete Folder - WRITE User (200)
 print_test_header "Delete Folder - WRITE User"
 # Create a new folder for the WRITE user to delete
-DELETE_FOLDER_RESPONSE=$(curl -s -X POST "$BASE_URL/folders" \
-  -H "Authorization: Bearer $USER_WRITE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "To Delete Folder", "description": "Folder to be deleted", "organizationId": "'$ORG_ID'"}')
+DELETE_FOLDER_DATA=$(get_folder_data "deleteTest" | jq --arg orgId "$ORG_ID" '. + {organizationId: $orgId}')
+DELETE_FOLDER_RESPONSE=$(execute_curl "curl -s -X POST '$BASE_URL/folders' -H 'Authorization: Bearer $USER_WRITE_TOKEN' -H 'Content-Type: application/json' -d '$DELETE_FOLDER_DATA'" "Create folder for deletion test")
 
 DELETE_FOLDER_ID=$(echo "$DELETE_FOLDER_RESPONSE" | jq -r '.folder.id')
 make_request "DELETE" "/folders/$DELETE_FOLDER_ID" "" "200" "$USER_WRITE_TOKEN" "Delete folder with WRITE role"
